@@ -509,7 +509,6 @@ else:
         current_step = st.select_slider(
             "Etapa da cadeia de áudio",
             options=list(range(len(equipment_names))),
-            value=current_step,
             format_func=lambda idx: f"{idx + 1}. {equipment_names[idx]}",
             key="guided_equipment_step"
         )
