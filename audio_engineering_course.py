@@ -535,7 +535,7 @@ quantos valores de amplitude podem ser representados.
 """)
         st.divider()
         st.subheader("Agora, carregue um áudio para experimentar")
-("Envie seu áudio para as atividades", type=["wav", "mp3", "ogg", "flac", "webm", "m4a", "aac"], key="course_audio")
+upload = st.file_uploader("Envie seu áudio para as atividades", type=["wav", "mp3", "ogg", "flac", "webm", "m4a", "aac"], key="course_audio")
         if upload is not None:
             try:
                 samples, sample_rate, channels = decode(upload.getvalue(), upload.name)
