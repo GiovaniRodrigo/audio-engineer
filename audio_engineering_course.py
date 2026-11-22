@@ -108,6 +108,99 @@ parâmetros. Não conclua que o áudio melhorou apenas porque ficou mais alto ou
     },
 }
 
+
+def equipment_chain_figure():
+    """Interactive isometric 3D schematic of an audio capture/playback chain."""
+    blocks = [
+        (0.0, "Microfone", "Converte variações de pressão do ar em sinal elétrico analógico."),
+        (2.0, "Pré-amplificador", "Eleva o sinal fraco do microfone para um nível adequado."),
+        (4.0, "Filtro anti-aliasing", "Limita frequências antes da conversão para evitar aliasing."),
+        (6.0, "ADC", "Converte o sinal analógico em números: amostra e quantiza."),
+        (8.0, "DSP / computador", "Armazena e processa as amostras digitais."),
+        (10.0, "DAC", "Converte os números digitais novamente em sinal analógico."),
+        (12.0, "Amplificador", "Fornece potência suficiente para movimentar o alto-falante."),
+        (14.0, "Alto-falante", "Converte o sinal elétrico em vibrações do ar."),
+    ]
+    fig = go.Figure()
+    # Connections are drawn first so the equipment blocks remain in the foreground.
+    for x, *_ in blocks[:-1]:
+        fig.add_trace(go.Scatter3d(
+            x=[x + 0.72, x + 1.28], y=[0, 0], z=[0, 0],
+            mode="lines", line=dict(color="#64748b", width=7),
+            hoverinfo="skip", showlegend=False
+        ))
+    faces = (
+        (0, 1, 2), (0, 2, 3), (4, 6, 5), (4, 7, 6),
+        (0, 4, 5), (0, 5, 1), (1, 5, 6), (1, 6, 2),
+        (2, 6, 7), (2, 7, 3), (3, 7, 4), (3, 4, 0)
+    )
+    for idx, (x, name, detail) in enumerate(blocks):
+        dx, dy, dz = 0.72, 0.55, 0.42
+        verts = [
+            (x-dx, -dy, -dz), (x+dx, -dy, -dz),
+            (x+dx, dy, -dz), (x-dx, dy, -dz),
+            (x-dx, -dy, dz), (x+dx, -dy, dz),
+            (x+dx, dy, dz), (x-dx, dy, dz),
+        ]
+        color = ["#0ea5e9", "#14b8a6", "#14b8a6", "#f59e0b",
+                 "#8b5cf6", "#f59e0b", "#14b8a6", "#0ea5e9"][idx]
+        fig.add_trace(go.Mesh3d(
+            x=[v[0] for v in verts], y=[v[1] for v in verts], z=[v[2] for v in verts],
+            i=[f[0] for f in faces], j=[f[1] for f in faces], k=[f[2] for f in faces],
+            color=color, opacity=0.92, flatshading=True,
+            hovertext=f"<b>{name}</b><br>{detail}", hoverinfo="text",
+            showscale=False, showlegend=False
+        ))
+    fig.add_trace(go.Scatter3d(
+        x=[x for x, _, _ in blocks], y=[0]*len(blocks), z=[0.83]*len(blocks),
+        mode="text", text=[name for _, name, _ in blocks],
+        textfont=dict(size=11, color="#e2e8f0"),
+        hoverinfo="skip", showlegend=False
+    ))
+    fig.update_layout(
+        height=520, margin=dict(l=0, r=0, t=10, b=0),
+        scene=dict(
+            xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
+            aspectmode="manual", aspectratio=dict(x=5.8, y=1.4, z=1.6),
+            camera=dict(eye=dict(x=1.4, y=1.8, z=1.2), projection=dict(type="orthographic"))
+        ),
+        showlegend=False
+    )
+    return fig
+
+
+def sampling_demo(sample_rate: int):
+    """Show a continuous analog-like waveform and regularly spaced digital samples."""
+    signal_hz = 2.0
+    t_cont = np.linspace(0, 1, 1200)
+    y_cont = np.sin(2 * np.pi * signal_hz * t_cont)
+    t_samples = np.arange(0, 1 + 1e-9, 1 / sample_rate)
+    y_samples = np.sin(2 * np.pi * signal_hz * t_samples)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=t_cont, y=y_cont, mode="lines", name="Sinal contínuo (analógico)",
+        line=dict(width=3, color="#0ea5e9")
+    ))
+    fig.add_trace(go.Scatter(
+        x=t_samples, y=y_samples, mode="markers", name="Amostras medidas pelo ADC",
+        marker=dict(size=10, color="#f97316", line=dict(width=1, color="#fff"))
+    ))
+    stem_x, stem_y = [], []
+    for tx, ty in zip(t_samples, y_samples):
+        stem_x.extend([tx, tx, None])
+        stem_y.extend([0, ty, None])
+    fig.add_trace(go.Scatter(
+        x=stem_x, y=stem_y, mode="lines", name="Instantes de amostragem",
+        line=dict(color="#f97316", width=1, dash="dot"), hoverinfo="skip"
+    ))
+    fig.update_layout(
+        height=380, xaxis_title="Tempo (segundos)", yaxis_title="Amplitude",
+        hovermode="x unified", legend=dict(orientation="h", y=-0.25),
+        margin=dict(l=10, r=10, t=20, b=65)
+    )
+    return fig, 1 / sample_rate, signal_hz
+
+
 def decode(raw: bytes, filename: str):
     try:
         data, sr = sf.read(io.BytesIO(raw), dtype="float32", always_2d=True)
@@ -202,6 +295,51 @@ else:
         st.markdown(LESSONS[stage]["theory"])
 
     if stage == 1:
+
+        st.subheader("Veja o caminho do som em 3D")
+        st.write("Gire o modelo com o mouse ou toque e arraste. Cada bloco representa um equipamento ou uma etapa do sinal.")
+        tab_equipment, tab_sampling = st.tabs(["Equipamentos em 3D", "Como o ADC mede em intervalos"])
+        with tab_equipment:
+            st.plotly_chart(equipment_chain_figure(), use_container_width=True, config={"displayModeBar": True})
+            st.markdown("""
+**O caminho da gravação até a reprodução**
+
+1. **Microfone:** capta o som e gera um sinal elétrico analógico.
+2. **Pré-amplificador:** aumenta esse sinal, que costuma ser muito fraco.
+3. **Filtro anti-aliasing:** reduz frequências que não podem ser representadas corretamente pela taxa de amostragem escolhida.
+4. **ADC — conversor analógico-digital:** mede a amplitude em instantes regulares e transforma cada medida em um valor digital.
+5. **DSP / computador:** trabalha com os números: grava, filtra, reduz ruído e analisa.
+6. **DAC — conversor digital-analógico:** transforma a sequência de números em um sinal elétrico variável.
+7. **Amplificador e alto-falante:** o amplificador fornece potência; o alto-falante transforma o sinal em som novamente.
+
+**Atenção:** ADC significa *analógico para digital*. DAC faz o caminho inverso: *digital para analógico*.
+""")
+        with tab_sampling:
+            sample_rate_demo = st.select_slider(
+                "Quantidade de amostras por segundo (taxa ilustrativa)",
+                options=[8, 10, 20, 40], value=10, format_func=lambda v: f"{v} Hz"
+            )
+            sample_fig, interval, signal_hz = sampling_demo(sample_rate_demo)
+            st.plotly_chart(sample_fig, use_container_width=True)
+            st.markdown(
+                f"**O que observar:** o sinal azul é contínuo. Os pontos laranja são as medições feitas pelo ADC. "
+                f"Com {sample_rate_demo} amostras por segundo, o intervalo entre medições é "
+                f"**{interval:.3f} s**. A onda demonstrada tem {signal_hz:.0f} Hz."
+            )
+            st.info(
+                "Aumente a taxa de amostragem e observe os pontos ficarem mais próximos. "
+                "O ADC não mede o sinal o tempo todo: ele registra valores em instantes igualmente espaçados."
+            )
+            st.markdown("""
+**E o que acontece depois da medição?**
+
+O ADC também precisa quantizar: arredondar cada medição para um dos níveis digitais permitidos
+pela profundidade de bits. Por exemplo, 8 bits permitem 256 níveis; 16 bits permitem 65.536 níveis.
+A taxa de amostragem controla quantas medições existem por segundo; a profundidade de bits controla
+quantos valores de amplitude podem ser representados.
+""")
+        st.divider()
+        st.subheader("Agora, carregue um áudio para experimentar")
         upload = st.file_uploader("Envie seu áudio para as atividades", type=["wav", "mp3", "ogg", "flac", "webm", "m4a", "aac"], key="course_audio")
         if upload is not None:
             try:
