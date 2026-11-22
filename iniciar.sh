@@ -10,11 +10,11 @@ if [[ ! -x ".venv/bin/streamlit" ]]; then
   exit 1
 fi
 
-APP_FILE="audio_engineering_lab.py"
+APP_FILE="audio_engineering_course.py"
 if [[ ! -f "$APP_FILE" ]]; then
   echo "Erro: $APP_FILE não foi encontrado na raiz do projeto." >&2
   exit 1
 fi
 
-echo "Iniciando Audio Engineering Lab..."
+echo "Iniciando o curso Audio Engineering Lab..."
 exec .venv/bin/streamlit run "$APP_FILE" "$@"
