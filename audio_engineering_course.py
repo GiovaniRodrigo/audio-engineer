@@ -374,7 +374,7 @@ def equipment_animation_figure(name, camera_view="isometric"):
                 data.append(go.Scatter3d(
                     x=front_x, y=[y_front, y_front], z=front_z,
                     mode="lines", line=dict(color=["#67e8f9", "#38bdf8", "#0ea5e9"][j], width=7),
-                    hoverinfo="skip
+                    hoverinfo="skip"
                 ))
                 traces.append(idx)
             diaphragm_shift = 0.022 * np.sin(phase * 2)
