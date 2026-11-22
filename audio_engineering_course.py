@@ -288,6 +288,11 @@ def add_cone(fig, x, y, z, radius, depth, color):
     ))
 
 
+def set_equipment_step(step: int):
+    """Update the synchronized text/3D guided lesson step."""
+    st.session_state.guided_equipment_step = int(step)
+
+
 def equipment_detail_figure(name):
     """Create an illustrative 3D model of the selected audio component."""
     kind = EQUIPMENT_DETAILS[name]["kind"]
@@ -475,32 +480,68 @@ else:
         st.markdown(LESSONS[stage]["theory"])
 
     if stage == 1:
-        st.subheader("Explore os equipamentos em 3D")
-        st.write("Escolha um componente. O modelo tridimensional e a explicação ficam lado a lado para facilitar a associação.")
-        selected_equipment = st.selectbox(
-            "Componente da cadeia de áudio",
-            list(EQUIPMENT_DETAILS.keys()),
-            key="selected_equipment"
+        st.subheader("A cadeia de áudio: aula visual guiada")
+        st.write(
+            "Avance etapa por etapa. O texto à esquerda e o equipamento 3D à direita "
+            "mudam juntos para mostrar o caminho percorrido pelo som."
         )
+        equipment_names = list(EQUIPMENT_DETAILS.keys())
+        if "guided_equipment_step" not in st.session_state:
+            st.session_state.guided_equipment_step = 0
+        current_step = int(st.session_state.guided_equipment_step)
+        nav_prev, nav_next, nav_count = st.columns([1, 1, 2])
+        with nav_prev:
+            st.button(
+                "← Anterior", key="equipment_prev",
+                disabled=current_step == 0,
+                on_click=set_equipment_step, args=(max(0, current_step - 1),)
+            )
+        with nav_next:
+            st.button(
+                "Próxima etapa →", key="equipment_next",
+                disabled=current_step == len(equipment_names) - 1,
+                type="primary",
+                on_click=set_equipment_step,
+                args=(min(len(equipment_names) - 1, current_step + 1),)
+            )
+        with nav_count:
+            st.caption(f"Etapa {current_step + 1} de {len(equipment_names)} · siga o sinal da esquerda para a direita")
+        current_step = st.select_slider(
+            "Etapa da cadeia de áudio",
+            options=list(range(len(equipment_names))),
+            value=current_step,
+            format_func=lambda idx: f"{idx + 1}. {equipment_names[idx]}",
+            key="guided_equipment_step"
+        )
+        selected_equipment = equipment_names[current_step]
         detail = EQUIPMENT_DETAILS[selected_equipment]
-        object_col, explanation_col = st.columns([1.15, 1], gap="large")
-        with object_col:
+        text_col, model_col = st.columns([1, 1.15], gap="large")
+        with text_col:
+            st.markdown(f"### {current_step + 1}. {selected_equipment}")
+            st.markdown(detail["role"])
+            st.markdown("**O que entra**")
+            st.info(detail["input"])
+            st.markdown("**O que sai**")
+            st.success(detail["output"])
+            st.markdown("**Uma forma de entender**")
+            st.write(detail["analogy"])
+            st.warning(detail["note"])
+        with model_col:
             st.plotly_chart(
                 equipment_detail_figure(selected_equipment),
                 use_container_width=True,
                 config={"displayModeBar": True}
             )
-            st.caption("Modelo 3D didático e interativo: arraste para girar e use o scroll para aproximar.")
-        with explanation_col:
-            st.markdown("### " + selected_equipment)
-            st.markdown(detail["role"])
-            st.markdown("**Entrada**")
-            st.info(detail["input"])
-            st.markdown("**Saída**")
-            st.success(detail["output"])
-            st.markdown("**Pense assim**")
-            st.write(detail["analogy"])
-            st.warning(detail["note"])
+            st.caption(
+                f"Modelo 3D: {selected_equipment}. Arraste para girar e use o scroll para aproximar. "
+                "Ao avançar, o modelo acompanha a explicação."
+            )
+        progress_labels = "  →  ".join(
+            [f"**{name}**" if idx == current_step else name
+             for idx, name in enumerate(equipment_names)]
+        )
+        st.markdown("**Percurso do sinal**")
+        st.markdown(progress_labels)
         st.divider()
         st.markdown("**Sequência completa do sinal**")
         st.markdown(
