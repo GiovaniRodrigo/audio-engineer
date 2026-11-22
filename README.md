@@ -4,11 +4,13 @@ Laboratório didático de processamento digital de sinais de áudio, desenvolvid
 
 ## Estado do projeto
 
-A versão inicial disponibiliza:
+A versão atual disponibiliza:
 - aquisição e caracterização de arquivos de áudio;
-- visualização da forma de onda;
-- análise espectral por FFT;
-- espectrograma;
+- visualização da forma de onda, com guia de leitura;
+- análise espectral por FFT, com explicação de frequência e magnitude;
+- espectrograma, com explicação de tempo, frequência, energia e resolução;
+- comparação visual sobreposta entre o sinal original e o processado;
+- explicações didáticas dos filtros, da redução espectral, do ganho e da normalização;
 - filtros passa-alta e passa-baixa;
 - redução espectral de ruído, ganho e normalização;
 - comparação entre áudio original e processado.
