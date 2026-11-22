@@ -169,6 +169,186 @@ def equipment_chain_figure():
     return fig
 
 
+
+
+EQUIPMENT_DETAILS = {
+    "Microfone": {
+        "kind": "microphone",
+        "role": "Capta a variação de pressão do ar e a transforma em um sinal elétrico analógico.",
+        "input": "Ondas sonoras no ar",
+        "output": "Sinal elétrico analógico de baixa intensidade",
+        "analogy": "É como um ouvido eletrônico: percebe vibrações no ar e as transforma em eletricidade.",
+        "note": "O microfone ainda não produz áudio digital. A conversão para números acontece depois, no ADC."
+    },
+    "Pré-amplificador": {
+        "kind": "preamp",
+        "role": "Eleva o sinal muito fraco do microfone para um nível adequado ao restante do circuito.",
+        "input": "Sinal analógico de baixa intensidade",
+        "output": "Sinal analógico amplificado",
+        "analogy": "É como aumentar o volume de uma voz muito baixa antes de gravá-la.",
+        "note": "Ganho excessivo pode amplificar também o ruído e pode causar clipping."
+    },
+    "Filtro anti-aliasing": {
+        "kind": "filter",
+        "role": "Atenua componentes de frequência acima da faixa que o sistema consegue representar.",
+        "input": "Sinal analógico antes do ADC",
+        "output": "Sinal limitado em banda",
+        "analogy": "É como uma peneira que impede frequências altas demais de entrar na conversão.",
+        "note": "É normalmente um circuito analógico integrado ao caminho de entrada da interface, não necessariamente uma caixa separada."
+    },
+    "ADC — conversor A/D": {
+        "kind": "adc",
+        "role": "Amostra o sinal analógico em instantes regulares e quantiza cada medição em um valor digital.",
+        "input": "Tensão analógica variável",
+        "output": "Sequência de números (amostras)",
+        "analogy": "É como tirar várias fotografias por segundo da amplitude do sinal.",
+        "note": "Taxa de amostragem define quantas medições são feitas por segundo; profundidade de bits define os níveis de amplitude disponíveis."
+    },
+    "DSP / computador": {
+        "kind": "computer",
+        "role": "Armazena e processa as amostras digitais por software ou hardware especializado.",
+        "input": "Amostras digitais",
+        "output": "Áudio digital processado",
+        "analogy": "É a bancada de trabalho: nela você corta, filtra, mede e analisa o áudio.",
+        "note": "Filtros digitais, redução de ruído, equalização e análise espectral podem acontecer nesta etapa."
+    },
+    "DAC — conversor D/A": {
+        "kind": "dac",
+        "role": "Converte os valores digitais em um sinal elétrico analógico variável.",
+        "input": "Sequência de números (amostras)",
+        "output": "Sinal elétrico analógico",
+        "analogy": "Faz o caminho inverso do ADC: reconstrói uma tensão variável a partir dos números.",
+        "note": "O sinal passa por circuitos de reconstrução e filtragem antes de alimentar a saída."
+    },
+    "Amplificador": {
+        "kind": "amplifier",
+        "role": "Fornece tensão e corrente suficientes para acionar um alto-falante ou fones passivos.",
+        "input": "Sinal analógico de nível de linha",
+        "output": "Sinal com potência adequada à carga",
+        "analogy": "É o músculo do sistema: fornece energia para movimentar o alto-falante.",
+        "note": "Não deve ser confundido com o pré-amplificador de microfone: eles trabalham com níveis e finalidades diferentes."
+    },
+    "Alto-falante": {
+        "kind": "speaker",
+        "role": "Transforma a energia elétrica do amplificador em movimento mecânico e ondas sonoras no ar.",
+        "input": "Sinal elétrico com potência",
+        "output": "Ondas sonoras",
+        "analogy": "É o caminho inverso do microfone: recebe eletricidade e movimenta o ar.",
+        "note": "A bobina movimenta o cone; o cone desloca o ar e produz som."
+    },
+}
+
+
+def add_box(fig, x, y, z, dx, dy, dz, color, opacity=1.0):
+    vertices = [
+        (x-dx/2, y-dy/2, z-dz/2), (x+dx/2, y-dy/2, z-dz/2),
+        (x+dx/2, y+dy/2, z-dz/2), (x-dx/2, y+dy/2, z-dz/2),
+        (x-dx/2, y-dy/2, z+dz/2), (x+dx/2, y-dy/2, z+dz/2),
+        (x+dx/2, y+dy/2, z+dz/2), (x-dx/2, y+dy/2, z+dz/2),
+    ]
+    faces = [(0,1,2),(0,2,3),(4,6,5),(4,7,6),(0,4,5),(0,5,1),
+             (1,5,6),(1,6,2),(2,6,7),(2,7,3),(3,7,4),(3,4,0)]
+    fig.add_trace(go.Mesh3d(
+        x=[p[0] for p in vertices], y=[p[1] for p in vertices], z=[p[2] for p in vertices],
+        i=[f[0] for f in faces], j=[f[1] for f in faces], k=[f[2] for f in faces],
+        color=color, opacity=opacity, flatshading=True, showscale=False, hoverinfo="skip"
+    ))
+
+
+def add_cylinder(fig, x, y, z, radius, height, color, segments=32):
+    angles = np.linspace(0, 2*np.pi, segments, endpoint=False)
+    xs = list(x + radius*np.cos(angles)) * 2
+    ys = list(y + radius*np.sin(angles)) * 2
+    zs = [z-height/2]*segments + [z+height/2]*segments
+    i, j, k = [], [], []
+    for n in range(segments):
+        nxt = (n+1) % segments
+        i.extend([n, n+segments, n])
+        j.extend([nxt, nxt+segments, nxt+segments])
+        k.extend([n+segments, nxt, nxt+segments])
+    fig.add_trace(go.Mesh3d(x=xs, y=ys, z=zs, i=i, j=j, k=k,
+                            color=color, opacity=0.98, showscale=False, hoverinfo="skip"))
+
+
+def add_cone(fig, x, y, z, radius, depth, color):
+    angles = np.linspace(0, 2*np.pi, 48, endpoint=False)
+    outer = [(x+radius*np.cos(a), y+radius*np.sin(a), z) for a in angles]
+    inner = [(x+0.12*radius*np.cos(a), y+0.12*radius*np.sin(a), z-depth) for a in angles]
+    verts = outer + inner
+    faces_i, faces_j, faces_k = [], [], []
+    for n in range(len(angles)):
+        nxt = (n+1) % len(angles)
+        faces_i.extend([n, n])
+        faces_j.extend([nxt, n+len(angles)])
+        faces_k.extend([nxt+len(angles), nxt])
+    fig.add_trace(go.Mesh3d(
+        x=[p[0] for p in verts], y=[p[1] for p in verts], z=[p[2] for p in verts],
+        i=faces_i, j=faces_j, k=faces_k, color=color, opacity=0.95,
+        showscale=False, hoverinfo="skip"
+    ))
+
+
+def equipment_detail_figure(name):
+    """Create an illustrative 3D model of the selected audio component."""
+    kind = EQUIPMENT_DETAILS[name]["kind"]
+    fig = go.Figure()
+    if kind == "microphone":
+        add_cylinder(fig, 0, 0, 0.35, 0.32, 1.25, "#334155")
+        add_cylinder(fig, 0, 0, 1.08, 0.34, 0.48, "#94a3b8")
+        add_cylinder(fig, 0, 0, -0.42, 0.09, 0.55, "#64748b")
+        add_box(fig, 0, 0, -0.78, 0.9, 0.08, 0.08, "#475569")
+        for zline in np.linspace(0.9, 1.25, 5):
+            fig.add_trace(go.Scatter3d(x=[-0.25,0.25], y=[0,0], z=[zline,zline],
+                mode="lines", line=dict(color="#e2e8f0", width=3), hoverinfo="skip", showlegend=False))
+    elif kind in ("preamp", "amplifier"):
+        add_box(fig, 0, 0, 0, 2.2, 1.25, 0.65, "#334155")
+        for x in [-0.7, 0, 0.7]:
+            add_cylinder(fig, x, -0.68, 0.08, 0.16, 0.14, "#f59e0b", 24)
+        add_cylinder(fig, -0.82, -0.69, -0.1, 0.055, 0.13, "#cbd5e1")
+        add_cylinder(fig, 0.82, -0.69, -0.1, 0.055, 0.13, "#cbd5e1")
+        add_box(fig, 0, 0.18, 0.36, 0.65, 0.35, 0.06, "#0f172a")
+        if kind == "amplifier":
+            add_box(fig, 0, 0.7, -0.02, 1.5, 0.12, 0.3, "#64748b")
+    elif kind == "filter":
+        add_box(fig, 0, 0, 0, 2.0, 1.2, 0.12, "#15803d")
+        for x in [-0.65, -0.2, 0.25, 0.7]:
+            add_box(fig, x, 0, 0.18, 0.22, 0.3, 0.25, "#1e293b")
+        for x in np.linspace(-0.8, 0.8, 9):
+            add_cylinder(fig, x, -0.48, 0.12, 0.045, 0.08, "#fbbf24", 12)
+        add_box(fig, 0, 0.72, 0.1, 0.35, 0.18, 0.2, "#cbd5e1")
+    elif kind in ("adc", "dac"):
+        add_box(fig, 0, 0, 0, 1.55, 1.05, 0.16, "#166534")
+        add_box(fig, 0, 0, 0.18, 0.68, 0.62, 0.28, "#111827")
+        for x in np.linspace(-0.58, 0.58, 8):
+            for y in [-0.43, 0.43]:
+                add_box(fig, x, y, 0.12, 0.07, 0.18, 0.08, "#e2e8f0")
+        for x in [-0.55, 0.55]:
+            for y in np.linspace(-0.3, 0.3, 5):
+                add_box(fig, x, y, 0.12, 0.18, 0.06, 0.08, "#e2e8f0")
+        add_box(fig, 0, 0, 0.38, 0.35, 0.25, 0.08, "#f59e0b")
+    elif kind == "computer":
+        add_box(fig, 0, 0, -0.12, 1.8, 0.95, 0.18, "#475569")
+        add_box(fig, 0, 0.05, 0.55, 1.8, 0.12, 1.15, "#64748b")
+        add_box(fig, 0, -0.02, 0.58, 1.58, 0.035, 0.92, "#0ea5e9")
+        add_box(fig, 0, -0.52, -0.22, 1.0, 0.05, 0.32, "#94a3b8")
+    elif kind == "speaker":
+        add_box(fig, 0, 0, 0, 1.7, 1.1, 2.0, "#334155")
+        add_cylinder(fig, 0, -0.58, 0.05, 0.58, 0.12, "#0f172a", 48)
+        add_cone(fig, 0, -0.68, 0.08, 0.49, 0.48, "#64748b")
+        add_cylinder(fig, 0, -0.92, -0.12, 0.12, 0.12, "#cbd5e1", 32)
+        add_cylinder(fig, 0, -0.58, 0.72, 0.18, 0.12, "#0f172a", 32)
+    fig.update_layout(
+        height=440, margin=dict(l=0, r=0, t=5, b=5),
+        scene=dict(
+            xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
+            aspectmode="data",
+            camera=dict(eye=dict(x=1.6, y=2.0, z=1.25), projection=dict(type="orthographic"))
+        ),
+        showlegend=False
+    )
+    return fig
+
+
 def sampling_demo(sample_rate: int):
     """Show a continuous analog-like waveform and regularly spaced digital samples."""
     signal_hz = 2.0
@@ -295,25 +475,40 @@ else:
         st.markdown(LESSONS[stage]["theory"])
 
     if stage == 1:
-
-        st.subheader("Veja o caminho do som em 3D")
-        st.write("Gire o modelo com o mouse ou toque e arraste. Cada bloco representa um equipamento ou uma etapa do sinal.")
-        tab_equipment, tab_sampling = st.tabs(["Equipamentos em 3D", "Como o ADC mede em intervalos"])
-        with tab_equipment:
-            st.plotly_chart(equipment_chain_figure(), use_container_width=True, config={"displayModeBar": True})
-            st.markdown("""
-**O caminho da gravação até a reprodução**
-
-1. **Microfone:** capta o som e gera um sinal elétrico analógico.
-2. **Pré-amplificador:** aumenta esse sinal, que costuma ser muito fraco.
-3. **Filtro anti-aliasing:** reduz frequências que não podem ser representadas corretamente pela taxa de amostragem escolhida.
-4. **ADC — conversor analógico-digital:** mede a amplitude em instantes regulares e transforma cada medida em um valor digital.
-5. **DSP / computador:** trabalha com os números: grava, filtra, reduz ruído e analisa.
-6. **DAC — conversor digital-analógico:** transforma a sequência de números em um sinal elétrico variável.
-7. **Amplificador e alto-falante:** o amplificador fornece potência; o alto-falante transforma o sinal em som novamente.
-
-**Atenção:** ADC significa *analógico para digital*. DAC faz o caminho inverso: *digital para analógico*.
-""")
+        st.subheader("Explore os equipamentos em 3D")
+        st.write("Escolha um componente. O modelo tridimensional e a explicação ficam lado a lado para facilitar a associação.")
+        selected_equipment = st.selectbox(
+            "Componente da cadeia de áudio",
+            list(EQUIPMENT_DETAILS.keys()),
+            key="selected_equipment"
+        )
+        detail = EQUIPMENT_DETAILS[selected_equipment]
+        object_col, explanation_col = st.columns([1.15, 1], gap="large")
+        with object_col:
+            st.plotly_chart(
+                equipment_detail_figure(selected_equipment),
+                use_container_width=True,
+                config={"displayModeBar": True}
+            )
+            st.caption("Modelo 3D didático e interativo: arraste para girar e use o scroll para aproximar.")
+        with explanation_col:
+            st.markdown("### " + selected_equipment)
+            st.markdown(detail["role"])
+            st.markdown("**Entrada**")
+            st.info(detail["input"])
+            st.markdown("**Saída**")
+            st.success(detail["output"])
+            st.markdown("**Pense assim**")
+            st.write(detail["analogy"])
+            st.warning(detail["note"])
+        st.divider()
+        st.markdown("**Sequência completa do sinal**")
+        st.markdown(
+            "Microfone → Pré-amplificador → Filtro anti-aliasing → ADC → "
+            "DSP/computador → DAC → Amplificador → Alto-falante"
+        )
+        st.caption("Observação: em interfaces reais, pré-amplificador, filtros e conversores costumam estar integrados na mesma placa ou circuito.")
+        tab_sampling = st.tabs(["Demonstração: amostragem do ADC"])[0]
         with tab_sampling:
             sample_rate_demo = st.select_slider(
                 "Quantidade de amostras por segundo (taxa ilustrativa)",
@@ -340,7 +535,7 @@ quantos valores de amplitude podem ser representados.
 """)
         st.divider()
         st.subheader("Agora, carregue um áudio para experimentar")
-        upload = st.file_uploader("Envie seu áudio para as atividades", type=["wav", "mp3", "ogg", "flac", "webm", "m4a", "aac"], key="course_audio")
+("Envie seu áudio para as atividades", type=["wav", "mp3", "ogg", "flac", "webm", "m4a", "aac"], key="course_audio")
         if upload is not None:
             try:
                 samples, sample_rate, channels = decode(upload.getvalue(), upload.name)
