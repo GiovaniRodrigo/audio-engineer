@@ -5,3 +5,5 @@ soundfile
 pydub
 noisereduce
 plotly
+faster-whisper>=1.1
+jiwer>=3.0
