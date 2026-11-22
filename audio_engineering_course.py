@@ -417,9 +417,9 @@ def equipment_animation_figure(name):
                 )
             ]
         )],
-        margin=dict(l=0, r=0, t=5, b=45)
+        height=590, paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=0, b=35)
     )
-    fig.update_layout(title=dict(text=animation_note, x=0.02, y=0.98, font=dict(size=12)))
     return fig
 
 
@@ -428,61 +428,173 @@ def set_equipment_step(step: int):
     st.session_state.guided_equipment_step = int(step)
 
 
+def add_torus(fig, x, y, z, major_radius, minor_radius, color, axis="z", resolution=48, tube=12):
+    """Add a shaded torus mesh; useful for bezels, grille rims and speaker surrounds."""
+    u = np.linspace(0, 2*np.pi, resolution, endpoint=False)
+    v = np.linspace(0, 2*np.pi, tube, endpoint=False)
+    uu, vv = np.meshgrid(u, v)
+    ring = major_radius + minor_radius*np.cos(vv)
+    a = ring*np.cos(uu)
+    b = ring*np.sin(uu)
+    c = minor_radius*np.sin(vv)
+    if axis == "y":
+        xx, yy, zz = x+a, y+c, z+b
+    else:
+        xx, yy, zz = x+a, y+b, z+c
+    xx, yy, zz = xx.ravel(), yy.ravel(), zz.ravel()
+    ii, jj, kk = [], [], []
+    for j in range(tube):
+        for i in range(resolution):
+            p = j*resolution+i
+            pn = j*resolution+(i+1)%resolution
+            q = ((j+1)%tube)*resolution+i
+            qn = ((j+1)%tube)*resolution+(i+1)%resolution
+            ii.extend([p, pn]); jj.extend([q, q]); kk.extend([qn, qn])
+    fig.add_trace(go.Mesh3d(
+        x=xx, y=yy, z=zz, i=ii, j=jj, k=kk, color=color,
+        flatshading=False, lighting=dict(ambient=0.42, diffuse=0.78, specular=0.72, roughness=0.28, fresnel=0.18),
+        lightposition=dict(x=120, y=180, z=240), showscale=False, hoverinfo="skip"
+    ))
+
+
+def add_sphere(fig, x, y, z, sx, sy, sz, color, opacity=1.0):
+    u = np.linspace(0, 2*np.pi, 28)
+    v = np.linspace(0, np.pi, 18)
+    uu, vv = np.meshgrid(u, v)
+    xx = x + sx*np.cos(uu)*np.sin(vv)
+    yy = y + sy*np.sin(uu)*np.sin(vv)
+    zz = z + sz*np.cos(vv)
+    fig.add_trace(go.Surface(
+        x=xx, y=yy, z=zz, surfacecolor=np.zeros_like(xx),
+        colorscale=[[0, color], [1, color]], showscale=False,
+        opacity=opacity, hoverinfo="skip",
+        lighting=dict(ambient=0.35, diffuse=0.8, specular=0.85, roughness=0.22, fresnel=0.2)
+    ))
+
+
 def equipment_detail_figure(name):
-    """Create an illustrative 3D model of the selected audio component."""
+    """Create a more product-like 3D model with recognizable physical components."""
     kind = EQUIPMENT_DETAILS[name]["kind"]
     fig = go.Figure()
+
     if kind == "microphone":
-        add_cylinder(fig, 0, 0, 0.35, 0.32, 1.25, "#334155")
-        add_cylinder(fig, 0, 0, 1.08, 0.34, 0.48, "#94a3b8")
-        add_cylinder(fig, 0, 0, -0.42, 0.09, 0.55, "#64748b")
-        add_box(fig, 0, 0, -0.78, 0.9, 0.08, 0.08, "#475569")
-        for zline in np.linspace(0.9, 1.25, 5):
-            fig.add_trace(go.Scatter3d(x=[-0.25,0.25], y=[0,0], z=[zline,zline],
-                mode="lines", line=dict(color="#e2e8f0", width=3), hoverinfo="skip", showlegend=False))
+        # Studio condenser microphone: cylindrical body, capsule, grille, rings and yoke.
+        add_cylinder(fig, 0, 0, 0.12, 0.255, 1.42, "#202a36", 64)
+        add_cylinder(fig, 0, 0, 0.83, 0.275, 0.48, "#8795a5", 64)
+        add_cylinder(fig, 0, 0, 1.12, 0.27, 0.12, "#c4ced8", 64)
+        add_cylinder(fig, 0, 0, 0.56, 0.263, 0.055, "#b7c1cb", 64)
+        add_cylinder(fig, 0, 0, -0.66, 0.075, 0.48, "#8795a5", 32)
+        add_box(fig, 0, 0, -0.94, 0.78, 0.07, 0.07, "#354253")
+        # Fine grille slots and dark acoustic mesh.
+        for zline in np.linspace(0.68, 1.02, 13):
+            fig.add_trace(go.Scatter3d(
+                x=[-0.20, 0.20], y=[-0.19, -0.19], z=[zline, zline],
+                mode="lines", line=dict(color="#e5edf5", width=2), hoverinfo="skip", showlegend=False
+            ))
+        for angle in np.linspace(0, 2*np.pi, 24, endpoint=False):
+            x = 0.278*np.cos(angle); y = 0.278*np.sin(angle)
+            fig.add_trace(go.Scatter3d(
+                x=[x, x], y=[y, y], z=[0.66, 1.03], mode="lines",
+                line=dict(color="#536273", width=1), hoverinfo="skip", showlegend=False
+            ))
+        add_torus(fig, 0, 0, 1.17, 0.245, 0.025, "#dbe3eb")
+        add_torus(fig, 0, 0, 0.54, 0.258, 0.018, "#dbe3eb")
+
     elif kind in ("preamp", "amplifier"):
-        add_box(fig, 0, 0, 0, 2.2, 1.25, 0.65, "#334155")
-        for x in [-0.7, 0, 0.7]:
-            add_cylinder(fig, x, -0.68, 0.08, 0.16, 0.14, "#f59e0b", 24)
-        add_cylinder(fig, -0.82, -0.69, -0.1, 0.055, 0.13, "#cbd5e1")
-        add_cylinder(fig, 0.82, -0.69, -0.1, 0.055, 0.13, "#cbd5e1")
-        add_box(fig, 0, 0.18, 0.36, 0.65, 0.35, 0.06, "#0f172a")
+        # Brushed-metal rack enclosure with front panel, rotary controls and connectors.
+        add_box(fig, 0, 0, 0, 2.35, 1.38, 0.72, "#263342")
+        add_box(fig, 0, -0.705, 0.02, 2.22, 0.045, 0.57, "#9aa8b6")
+        add_box(fig, 0, 0.05, 0.385, 2.15, 1.1, 0.035, "#3d4b5b")
+        for x in [-0.78, -0.25, 0.28, 0.81]:
+            add_cylinder(fig, x, -0.77, 0.06, 0.135, 0.12, "#202a36", 40)
+            add_cylinder(fig, x, -0.84, 0.06, 0.09, 0.08, "#c2a56c", 40)
+            add_torus(fig, x, -0.845, 0.06, 0.105, 0.012, "#e6d4ad", axis="y")
+            fig.add_trace(go.Scatter3d(
+                x=[x, x], y=[-0.89, -0.89], z=[0.06, 0.15],
+                mode="lines", line=dict(color="#f8fafc", width=3), hoverinfo="skip", showlegend=False
+            ))
+        for x in [-1.02, 1.02]:
+            add_cylinder(fig, x, -0.77, -0.18, 0.075, 0.12, "#d5dde5", 32)
+            add_cylinder(fig, x, -0.84, -0.18, 0.035, 0.08, "#202a36", 24)
+        for x in np.linspace(-0.9, 0.9, 7):
+            add_sphere(fig, x, -0.765, 0.27, 0.025, 0.018, 0.025, "#4ade80" if x < 0 else "#f59e0b")
         if kind == "amplifier":
-            add_box(fig, 0, 0.7, -0.02, 1.5, 0.12, 0.3, "#64748b")
+            add_box(fig, 0, 0.70, -0.05, 1.45, 0.12, 0.3, "#788797")
+            for x in np.linspace(-0.55, 0.55, 9):
+                add_box(fig, x, 0.73, 0.13, 0.035, 0.08, 0.26, "#c1ccd6")
+
     elif kind == "filter":
-        add_box(fig, 0, 0, 0, 2.0, 1.2, 0.12, "#15803d")
-        for x in [-0.65, -0.2, 0.25, 0.7]:
-            add_box(fig, x, 0, 0.18, 0.22, 0.3, 0.25, "#1e293b")
-        for x in np.linspace(-0.8, 0.8, 9):
-            add_cylinder(fig, x, -0.48, 0.12, 0.045, 0.08, "#fbbf24", 12)
-        add_box(fig, 0, 0.72, 0.1, 0.35, 0.18, 0.2, "#cbd5e1")
+        # PCB with traces, capacitors, resistors and an inductor.
+        add_box(fig, 0, 0, -0.08, 2.05, 1.35, 0.16, "#12634f")
+        for y in [-0.56, 0.56]:
+            add_box(fig, 0, y, 0.015, 1.92, 0.025, 0.025, "#d5a84b")
+        for x in np.linspace(-0.78, 0.78, 8):
+            add_cylinder(fig, x, -0.61, 0.02, 0.035, 0.07, "#d8c7a0", 16)
+        for x in [-0.66, -0.18, 0.32, 0.72]:
+            add_box(fig, x, 0.0, 0.13, 0.18, 0.24, 0.22, "#202a36")
+            add_box(fig, x, -0.17, 0.14, 0.08, 0.08, 0.08, "#c7a56a")
+        for x, y, h in [(-0.42, 0.32, 0.34), (0.08, 0.32, 0.28), (0.55, -0.32, 0.38)]:
+            add_cylinder(fig, x, y, 0.12+h/2, 0.095, h, "#b9c7d5", 32)
+            add_cylinder(fig, x, y, 0.12+h+0.015, 0.098, 0.035, "#64748b", 32)
+        add_cylinder(fig, 0.0, -0.35, 0.22, 0.16, 0.32, "#d5b36b", 32)
+
     elif kind in ("adc", "dac"):
-        add_box(fig, 0, 0, 0, 1.55, 1.05, 0.16, "#166534")
-        add_box(fig, 0, 0, 0.18, 0.68, 0.62, 0.28, "#111827")
-        for x in np.linspace(-0.58, 0.58, 8):
-            for y in [-0.43, 0.43]:
-                add_box(fig, x, y, 0.12, 0.07, 0.18, 0.08, "#e2e8f0")
-        for x in [-0.55, 0.55]:
-            for y in np.linspace(-0.3, 0.3, 5):
-                add_box(fig, x, y, 0.12, 0.18, 0.06, 0.08, "#e2e8f0")
-        add_box(fig, 0, 0, 0.38, 0.35, 0.25, 0.08, "#f59e0b")
+        # Converter IC mounted on a PCB, with pin rows and input/output connectors.
+        add_box(fig, 0, 0, -0.08, 1.85, 1.35, 0.16, "#12634f")
+        add_box(fig, 0, 0, 0.12, 0.92, 0.72, 0.25, "#202a36")
+        add_box(fig, 0, 0, 0.27, 0.74, 0.55, 0.08, "#39495a")
+        add_box(fig, 0, 0, 0.325, 0.43, 0.28, 0.035, "#111827")
+        for x in [-0.40, 0.40]:
+            for y in np.linspace(-0.27, 0.27, 8):
+                add_box(fig, x, y, 0.12, 0.13, 0.035, 0.045, "#cbd5e1")
+        for x in np.linspace(-0.72, 0.72, 9):
+            for y in [-0.53, 0.53]:
+                add_box(fig, x, y, 0.10, 0.055, 0.16, 0.06, "#d9e1e8")
+        for x in [-0.77, 0.77]:
+            add_cylinder(fig, x, 0, 0.17, 0.11, 0.22, "#c1ccd6", 32)
+            add_cylinder(fig, x, 0, 0.29, 0.055, 0.05, "#263342", 24)
+        add_sphere(fig, -0.58, 0.34, 0.18, 0.055, 0.055, 0.055, "#f59e0b")
+        add_sphere(fig, 0.58, -0.34, 0.18, 0.055, 0.055, 0.055, "#4ade80")
+
     elif kind == "computer":
-        add_box(fig, 0, 0, -0.12, 1.8, 0.95, 0.18, "#475569")
-        add_box(fig, 0, 0.05, 0.55, 1.8, 0.12, 1.15, "#64748b")
-        add_box(fig, 0, -0.02, 0.58, 1.58, 0.035, 0.92, "#0ea5e9")
-        add_box(fig, 0, -0.52, -0.22, 1.0, 0.05, 0.32, "#94a3b8")
+        # Desktop monitor with bezel, glass display, stand and keyboard.
+        add_box(fig, 0, 0.05, 0.58, 1.95, 0.15, 1.28, "#202a36")
+        add_box(fig, 0, -0.04, 0.59, 1.78, 0.035, 1.10, "#10283b")
+        # Screen visualization: subtle waveform and signal trace.
+        xs = np.linspace(-0.78, 0.78, 90)
+        ys = -0.067*np.ones_like(xs)
+        zs = 0.59 + 0.20*np.sin(xs*8)
+        fig.add_trace(go.Scatter3d(x=xs, y=ys, z=zs, mode="lines",
+            line=dict(color="#38bdf8", width=5), hoverinfo="skip", showlegend=False))
+        add_box(fig, 0, 0.1, -0.18, 0.20, 0.48, 0.28, "#8997a5")
+        add_box(fig, 0, 0.12, -0.34, 0.85, 0.58, 0.08, "#aeb9c4")
+        add_box(fig, 0, -0.65, -0.30, 1.35, 0.42, 0.10, "#374557")
+        for x in np.linspace(-0.58, 0.58, 12):
+            for z in [-0.27, -0.30]:
+                add_box(fig, x, -0.88, z, 0.065, 0.025, 0.018, "#d1dae3")
+
     elif kind == "speaker":
-        add_box(fig, 0, 0, 0, 1.7, 1.1, 2.0, "#334155")
-        add_cylinder(fig, 0, -0.58, 0.05, 0.58, 0.12, "#0f172a", 48)
-        add_cone(fig, 0, -0.68, 0.08, 0.49, 0.48, "#64748b")
-        add_cylinder(fig, 0, -0.92, -0.12, 0.12, 0.12, "#cbd5e1", 32)
-        add_cylinder(fig, 0, -0.58, 0.72, 0.18, 0.12, "#0f172a", 32)
+        # Loudspeaker cabinet with mounting rim, surround, cone, dust cap and terminals.
+        add_box(fig, 0, 0.02, 0, 1.78, 1.18, 2.12, "#263342")
+        add_box(fig, 0, -0.59, 0, 1.64, 0.055, 1.98, "#111827")
+        add_torus(fig, 0, -0.635, 0.10, 0.67, 0.065, "#8997a5", axis="y")
+        add_torus(fig, 0, -0.675, 0.10, 0.55, 0.045, "#202a36", axis="y")
+        add_cone(fig, 0, -0.69, 0.10, 0.52, 0.40, "#8795a5")
+        add_torus(fig, 0, -0.72, 0.10, 0.17, 0.035, "#c1ccd6", axis="y")
+        add_cylinder(fig, 0, -0.79, 0.10, 0.15, 0.12, "#263342", 48)
+        add_cylinder(fig, 0, -0.86, 0.10, 0.09, 0.035, "#c1ccd6", 40)
+        for x in [-0.72, 0.72]:
+            for z in [-0.82, 0.98]:
+                add_cylinder(fig, x, -0.64, z, 0.035, 0.06, "#d5dde5", 20)
+
     fig.update_layout(
-        height=440, margin=dict(l=0, r=0, t=5, b=5),
+        height=590, margin=dict(l=0, r=0, t=8, b=8),
+        paper_bgcolor="rgba(0,0,0,0)",
         scene=dict(
+            bgcolor="rgba(0,0,0,0)",
             xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
             aspectmode="data",
-            camera=dict(eye=dict(x=1.6, y=2.0, z=1.25), projection=dict(type="orthographic"))
+            camera=dict(eye=dict(x=1.55, y=2.15, z=1.35), projection=dict(type="perspective"))
         ),
         showlegend=False
     )
@@ -615,61 +727,98 @@ else:
         st.markdown(LESSONS[stage]["theory"])
 
     if stage == 1:
-        st.subheader("A cadeia de áudio: aula visual guiada")
-        st.write(
-            "Avance etapa por etapa. O texto à esquerda e o equipamento 3D à direita "
-            "mudam juntos para mostrar o caminho percorrido pelo som."
+        st.subheader("A cadeia de áudio")
+        st.markdown(
+            "Explore cada componente da cadeia. A explicação, o modelo e a animação acompanham a etapa selecionada."
         )
         equipment_names = list(EQUIPMENT_DETAILS.keys())
         if "guided_equipment_step" not in st.session_state:
             st.session_state.guided_equipment_step = 0
         current_step = int(st.session_state.guided_equipment_step)
+
+        st.markdown("""
+        <style>
+        div[data-testid="stHorizontalBlock"] { align-items: stretch; }
+        .equipment-panel {
+            border: 1px solid rgba(148,163,184,.24);
+            border-radius: 16px;
+            padding: 1rem 1.1rem;
+            background: linear-gradient(145deg, rgba(30,41,59,.52), rgba(15,23,42,.22));
+            min-height: 100%;
+        }
+        .equipment-kicker {
+            color: #38bdf8; font-size: .76rem; font-weight: 700;
+            letter-spacing: .10em; text-transform: uppercase;
+        }
+        .equipment-flow {
+            border: 1px solid rgba(148,163,184,.22); border-radius: 12px;
+            padding: .8rem; background: rgba(15,23,42,.35);
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
         nav_prev, nav_next, nav_count = st.columns([1, 1, 2])
         with nav_prev:
             st.button(
                 "← Anterior", key="equipment_prev",
                 disabled=current_step == 0,
-                on_click=set_equipment_step, args=(max(0, current_step - 1),)
+                on_click=set_equipment_step, args=(max(0, current_step - 1),),
+                use_container_width=True
             )
         with nav_next:
             st.button(
                 "Próxima etapa →", key="equipment_next",
                 disabled=current_step == len(equipment_names) - 1,
-                type="primary",
-                on_click=set_equipment_step,
-                args=(min(len(equipment_names) - 1, current_step + 1),)
+                type="primary", on_click=set_equipment_step,
+                args=(min(len(equipment_names) - 1, current_step + 1),),
+                use_container_width=True
             )
         with nav_count:
-            st.caption(f"Etapa {current_step + 1} de {len(equipment_names)} · siga o sinal da esquerda para a direita")
+            st.caption(f"COMPONENTE {current_step + 1:02d} / {len(equipment_names):02d}")
+            st.progress((current_step + 1) / len(equipment_names))
+
         current_step = st.select_slider(
-            "Etapa da cadeia de áudio",
+            "Percurso da cadeia",
             options=list(range(len(equipment_names))),
             format_func=lambda idx: f"{idx + 1}. {equipment_names[idx]}",
             key="guided_equipment_step"
         )
         selected_equipment = equipment_names[current_step]
         detail = EQUIPMENT_DETAILS[selected_equipment]
-        text_col, model_col = st.columns([1, 1.15], gap="large")
+        text_col, model_col = st.columns([0.82, 1.55], gap="large")
+
         with text_col:
-            st.markdown(f"### {current_step + 1}. {selected_equipment}")
+            st.markdown('<div class="equipment-panel">', unsafe_allow_html=True)
+            st.markdown(f'<div class="equipment-kicker">Etapa {current_step + 1} · cadeia de áudio</div>', unsafe_allow_html=True)
+            st.markdown(f"### {selected_equipment}")
             st.markdown(detail["role"])
-            st.markdown("**O que entra**")
-            st.info(detail["input"])
-            st.markdown("**O que sai**")
-            st.success(detail["output"])
-            st.markdown("**Uma forma de entender**")
+            st.divider()
+            st.markdown("**SINAL DE ENTRADA**")
+            st.info(detail["input"], icon="↘️")
+            st.markdown("**SINAL DE SAÍDA**")
+            st.success(detail["output"], icon="↗️")
+            st.markdown("**Como entender**")
             st.write(detail["analogy"])
-            st.warning(detail["note"])
+            with st.expander("Detalhe técnico", expanded=False):
+                st.write(detail["note"])
+            st.markdown('</div>', unsafe_allow_html=True)
+
         with model_col:
+            st.markdown('<div class="equipment-panel">', unsafe_allow_html=True)
+            st.markdown('<div class="equipment-kicker">Visualização tridimensional interativa</div>', unsafe_allow_html=True)
+            st.markdown(f"#### {selected_equipment}")
             st.plotly_chart(
                 equipment_animation_figure(selected_equipment),
                 use_container_width=True,
-                config={"displayModeBar": True}
+                config={
+                    "displayModeBar": True,
+                    "displaylogo": False,
+                    "modeBarButtonsToRemove": ["toImage", "lasso3d", "select3d"]
+                },
+                key=f"equipment_model_{current_step}"
             )
-            st.caption(
-                f"Modelo 3D animado: use ▶ Reproduzir e Ⅱ Pausar. Arraste para girar e use o scroll para aproximar. "
-                "Ao avançar, o modelo e a explicação mudam juntos."
-            )
+            st.caption("Use ▶ Reproduzir e Ⅱ Pausar no gráfico. Arraste para girar e use a roda do mouse para aproximar.")
+            st.markdown('</div>', unsafe_allow_html=True)
         progress_labels = "  →  ".join(
             [f"**{name}**" if idx == current_step else name
              for idx, name in enumerate(equipment_names)]
