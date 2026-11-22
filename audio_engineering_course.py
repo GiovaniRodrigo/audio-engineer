@@ -789,35 +789,34 @@ else:
 
         with text_col:
             with st.container(border=True):
-            st.markdown(f'<div class="equipment-kicker">Etapa {current_step + 1} · cadeia de áudio</div>', unsafe_allow_html=True)
-            st.markdown(f"### {selected_equipment}")
-            st.markdown(detail["role"])
-            st.divider()
-            st.markdown("**SINAL DE ENTRADA**")
-            st.info(detail["input"], icon="↘️")
-            st.markdown("**SINAL DE SAÍDA**")
-            st.success(detail["output"], icon="↗️")
-            st.markdown("**Como entender**")
-            st.write(detail["analogy"])
-            with st.expander("Detalhe técnico", expanded=False):
-                st.write(detail["note"])
+                st.markdown(f'<div class="equipment-kicker">Etapa {current_step + 1} · cadeia de áudio</div>', unsafe_allow_html=True)
+                st.markdown(f"### {selected_equipment}")
+                st.markdown(detail["role"])
+                st.divider()
+                st.markdown("**SINAL DE ENTRADA**")
+                st.info(detail["input"], icon="↘️")
+                st.markdown("**SINAL DE SAÍDA**")
+                st.success(detail["output"], icon="↗️")
+                st.markdown("**Como entender**")
+                st.write(detail["analogy"])
+                with st.expander("Detalhe técnico", expanded=False):
+                    st.write(detail["note"])
 
         with model_col:
             with st.container(border=True):
-            st.markdown('<div class="equipment-kicker">Visualização tridimensional interativa</div>', unsafe_allow_html=True)
-            st.markdown(f"#### {selected_equipment}")
-            st.plotly_chart(
-                equipment_animation_figure(selected_equipment),
-                use_container_width=True,
-                config={
-                    "displayModeBar": True,
-                    "displaylogo": False,
-                    "modeBarButtonsToRemove": ["toImage", "lasso3d", "select3d"]
-                },
-                key=f"equipment_model_{current_step}"
-            )
-            st.caption("Use ▶ Reproduzir e Ⅱ Pausar no gráfico. Arraste para girar e use a roda do mouse para aproximar.")
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('<div class="equipment-kicker">Visualização tridimensional interativa</div>', unsafe_allow_html=True)
+                st.markdown(f"#### {selected_equipment}")
+                st.plotly_chart(
+                    equipment_animation_figure(selected_equipment),
+                    use_container_width=True,
+                    config={
+                        "displayModeBar": True,
+                        "displaylogo": False,
+                        "modeBarButtonsToRemove": ["toImage", "lasso3d", "select3d"]
+                    },
+                    key=f"equipment_model_{current_step}"
+                )
+                st.caption("Use ▶ Reproduzir e Ⅱ Pausar no gráfico. Arraste para girar e use a roda do mouse para aproximar.")
         progress_labels = "  →  ".join(
             [f"**{name}**" if idx == current_step else name
              for idx, name in enumerate(equipment_names)]
