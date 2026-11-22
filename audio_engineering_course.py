@@ -885,7 +885,7 @@ else:
                     "amplifier": "Observe a etapa de potência: ela fornece energia suficiente para movimentar a carga.",
                     "speaker": "Observe o cone: seu movimento desloca o ar e produz novas ondas sonoras."
                 }
-                st.info("**O que observar na animação**  \\n" + visual_guides[detail["kind"]], icon="👀")
+                st.info("**O que observar na animação**  \n" + visual_guides[detail["kind"]], icon="👀")
                 with st.expander("Detalhe técnico", expanded=False):
                     st.write(detail["note"])
 
