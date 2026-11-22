@@ -8,7 +8,7 @@ import numpy as np
 import plotly.graph_objects as go
 import soundfile as sf
 import streamlit as st
-from scipy.signal import butter, find_peaks, sosfiltfilt, spectrogram
+from scipy.signal import butter, find_peaks, resample_poly, sosfiltfilt, spectrogram
 
 
 @dataclass
@@ -85,6 +85,47 @@ def wav_bytes(signal: np.ndarray, sample_rate: int) -> bytes:
         subtype="PCM_16",
     )
     return buffer.getvalue()
+
+
+@st.cache_resource(show_spinner="Carregando o modelo de reconhecimento de fala...")
+def load_asr_model(model_size: str):
+    """Load and cache a CPU/int8 Faster-Whisper model."""
+    from faster_whisper import WhisperModel
+
+    return WhisperModel(model_size, device="cpu", compute_type="int8")
+
+
+def prepare_for_asr(signal: np.ndarray, sample_rate: int) -> np.ndarray:
+    """Convert mono audio to the 16 kHz float32 waveform expected by Whisper."""
+    signal = np.asarray(signal, dtype=np.float32)
+    if sample_rate != 16000:
+        divisor = math.gcd(int(sample_rate), 16000)
+        signal = resample_poly(
+            signal, 16000 // divisor, int(sample_rate) // divisor
+        ).astype(np.float32)
+    return np.ascontiguousarray(signal)
+
+
+def transcribe_with_model(model, signal: np.ndarray, sample_rate: int, language: str, beam_size: int):
+    waveform = prepare_for_asr(signal, sample_rate)
+    selected_language = None if language == "Auto detectar" else language
+    segments, info = model.transcribe(
+        waveform,
+        language=selected_language,
+        beam_size=beam_size,
+        vad_filter=True,
+    )
+    segments = list(segments)
+    transcript = " ".join(item.text.strip() for item in segments).strip()
+    rows = [
+        {
+            "start": float(item.start),
+            "end": float(item.end),
+            "text": item.text.strip(),
+        }
+        for item in segments
+    ]
+    return transcript, rows, info
 
 
 def plot_samples(signal: np.ndarray, sample_rate: int, limit: int = 15000):
@@ -504,6 +545,182 @@ st.download_button(
     file_name="audio_processado.wav",
     mime="audio/wav",
 )
+
+st.divider()
+st.subheader("5. Reconhecimento automático de fala (ASR)")
+st.markdown(
+    "Agora podemos testar se o processamento altera o que o reconhecedor entende. "
+    "O modelo recebe o áudio digital, não o gráfico: as visualizações ajudam a investigar "
+    "o sinal, enquanto a transcrição permite avaliar o resultado linguístico."
+)
+
+asr_col1, asr_col2, asr_col3 = st.columns(3)
+with asr_col1:
+    asr_model_size = st.selectbox(
+        "Modelo Faster-Whisper",
+        ["tiny", "base", "small", "medium"],
+        index=1,
+        help="Modelos maiores tendem a ser mais precisos, mas consomem mais memória e tempo.",
+    )
+with asr_col2:
+    asr_language_label = st.selectbox(
+        "Idioma da fala",
+        ["Auto detectar", "Português", "Inglês", "Espanhol"],
+        index=1,
+    )
+    asr_language = {
+        "Auto detectar": "Auto detectar",
+        "Português": "pt",
+        "Inglês": "en",
+        "Espanhol": "es",
+    }[asr_language_label]
+with asr_col3:
+    asr_beam_size = st.select_slider(
+        "Beam size",
+        options=[1, 3, 5, 8],
+        value=5,
+        help="Valores maiores exploram mais hipóteses de texto e podem aumentar o tempo.",
+    )
+
+st.caption(
+    "Execução local em CPU com quantização int8. Na primeira execução, os pesos do modelo "
+    "serão baixados automaticamente. O tempo depende do tamanho do modelo e do computador."
+)
+reference_text = st.text_area(
+    "Transcrição de referência (opcional, revise manualmente)",
+    placeholder="Digite aqui exatamente o que foi falado no áudio...",
+    help="WER e CER só são calculados quando você fornece uma referência confiável.",
+    height=100,
+)
+run_asr = st.button("Transcrever original e processado", type="primary")
+if run_asr:
+    try:
+        with st.spinner("Carregando o modelo e transcrevendo os dois áudios..."):
+            asr_model = load_asr_model(asr_model_size)
+            original_text, original_segments, original_info = transcribe_with_model(
+                asr_model, original, sr, asr_language, asr_beam_size
+            )
+            processed_text, processed_segments, processed_info = transcribe_with_model(
+                asr_model, processed, sr, asr_language, asr_beam_size
+            )
+        st.session_state["asr_result"] = {
+            "model": asr_model_size,
+            "language": asr_language_label,
+            "original_text": original_text,
+            "processed_text": processed_text,
+            "original_segments": original_segments,
+            "processed_segments": processed_segments,
+        }
+        st.success(
+            f"Transcrição concluída. Idioma detectado no original: "
+            f"{getattr(original_info, 'language', 'não informado')}."
+        )
+    except ImportError:
+        st.error(
+            "Faster-Whisper não está instalado. Execute: "
+            "python -m pip install -r requirements.txt"
+        )
+    except Exception as exc:
+        st.error(f"Falha no reconhecimento: {exc}")
+
+result = st.session_state.get("asr_result")
+if result:
+    st.caption(
+        f"Último resultado: modelo {result['model']} · "
+        f"idioma configurado: {result['language']}"
+    )
+    transcript_col1, transcript_col2 = st.columns(2)
+    with transcript_col1:
+        st.markdown("**Transcrição do áudio original**")
+        st.text_area(
+            "Texto original reconhecido",
+            value=result["original_text"],
+            height=160,
+            key="asr_original_display",
+        )
+    with transcript_col2:
+        st.markdown("**Transcrição do áudio processado**")
+        st.text_area(
+            "Texto processado reconhecido",
+            value=result["processed_text"],
+            height=160,
+            key="asr_processed_display",
+        )
+
+    with st.expander("Segmentos e marcações de tempo"):
+        st.markdown("**Original**")
+        for item in result["original_segments"]:
+            st.write(f"[{item['start']:.2f}–{item['end']:.2f} s] {item['text']}")
+        st.markdown("**Processado**")
+        for item in result["processed_segments"]:
+            st.write(f"[{item['start']:.2f}–{item['end']:.2f} s] {item['text']}")
+
+    if reference_text.strip():
+        try:
+            from jiwer import cer, wer
+
+            reference = reference_text.strip()
+            original_wer = wer(reference, result["original_text"]) * 100
+            processed_wer = wer(reference, result["processed_text"]) * 100
+            original_cer = cer(reference, result["original_text"]) * 100
+            processed_cer = cer(reference, result["processed_text"]) * 100
+            metric_col1, metric_col2 = st.columns(2)
+            with metric_col1:
+                st.markdown("**WER — taxa de erro de palavras**")
+                st.metric("Original", f"{original_wer:.2f}%")
+                st.metric(
+                    "Processado",
+                    f"{processed_wer:.2f}%",
+                    delta=f"{processed_wer - original_wer:+.2f} p.p.",
+                    delta_color="inverse",
+                )
+            with metric_col2:
+                st.markdown("**CER — taxa de erro de caracteres**")
+                st.metric("Original", f"{original_cer:.2f}%")
+                st.metric(
+                    "Processado",
+                    f"{processed_cer:.2f}%",
+                    delta=f"{processed_cer - original_cer:+.2f} p.p.",
+                    delta_color="inverse",
+                )
+            st.caption(
+                "Quanto menores WER e CER, melhor a correspondência com a referência. "
+                "WER pode ultrapassar 100% quando há muitas inserções. Use a mesma referência "
+                "e os mesmos parâmetros ao comparar experimentos."
+            )
+        except ImportError:
+            st.warning("Instale jiwer com: python -m pip install -r requirements.txt")
+    else:
+        st.info(
+            "Adicione uma transcrição de referência revisada para calcular WER e CER. "
+            "Sem ela, temos apenas duas hipóteses de transcrição, não uma medida de precisão."
+        )
+
+    st.download_button(
+        "Baixar transcrições (TXT)",
+        data=(
+            "TRANSCRIÇÃO — ORIGINAL\n"
+            + result["original_text"]
+            + "\n\nTRANSCRIÇÃO — PROCESSADO\n"
+            + result["processed_text"]
+            + "\n"
+        ),
+        file_name="transcricoes_audio.txt",
+        mime="text/plain",
+    )
+
+with st.expander("Como interpretar WER e CER"):
+    st.markdown(
+        """
+- **WER (Word Error Rate):** soma de substituições, exclusões e inserções de palavras,
+  dividida pelo número de palavras da referência.
+- **CER (Character Error Rate):** a mesma ideia, aplicada a caracteres.
+- **0%:** transcrição idêntica à referência após a normalização feita pela biblioteca.
+- **Valores maiores:** mais diferenças em relação ao texto de referência.
+- **Limitação:** uma transcrição de referência incorreta ou incompleta compromete a avaliação.
+  Revise pontuação, números, nomes próprios e palavras inaudíveis antes de comparar.
+"""
+    )
 
 with st.expander("Limites e interpretação correta"):
     st.markdown(
