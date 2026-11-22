@@ -391,7 +391,7 @@ def equipment_animation_figure(name, camera_view="isometric"):
         ],
         height=650, paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=28, b=35),
-        uirevision=f"audio-equipment-{name}"
+        uirevision=f"audio-equipment-{name}-{camera_view}"
     )
     return fig
 
