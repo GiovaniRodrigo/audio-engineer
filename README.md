@@ -4,7 +4,7 @@ Curso prático e laboratório de processamento digital de sinais de áudio, dese
 
 O projeto possui duas experiências:
 
-- **Curso guiado** (`audio_engineering_course.py`): trilha progressiva do básico ao avançado, com explicações, experimentos, atividades e verificações de aprendizagem.
+- **Curso guiado** (`audio_engineering_course.py`): trilha progressiva do básico ao avançado, com explicações, experimentos, atividades e verificações de aprendizagem. A etapa inicial inclui um esquema 3D interativo da cadeia de áudio e uma demonstração visual da amostragem do ADC.
 - **Laboratório completo** (`audio_engineering_lab.py`): ambiente técnico para explorar aquisição, forma de onda, FFT, espectrograma, DSP e reconhecimento automático de fala.
 
 ## Trilha de aprendizagem
