@@ -472,11 +472,11 @@ def equipment_animation_figure(name, camera_view="isometric"):
             xanchor="left", yanchor="bottom", direction="right",
             buttons=[
                 dict(label="▶ Reproduzir", method="animate",
-                     args=[None, dict(frame=dict(duration=85, redraw=False),
+                     args=[None, dict(frame=dict(duration=100, redraw=True),
                                       transition=dict(duration=0), fromcurrent=True,
                                       mode="immediate")]),
                 dict(label="Ⅱ Pausar", method="animate",
-                     args=[[None], dict(frame=dict(duration=0, redraw=False),
+                     args=[[None], dict(frame=dict(duration=0, redraw=True),
                                         transition=dict(duration=0), mode="immediate")])
             ]
         )],
