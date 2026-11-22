@@ -2,62 +2,79 @@
 
 Laboratório didático de processamento digital de sinais de áudio, desenvolvido em Python e Streamlit.
 
-## Estado do projeto
-
-A versão atual disponibiliza:
-- aquisição e caracterização de arquivos de áudio;
-- visualização da forma de onda, com guia de leitura;
-- análise espectral por FFT, com explicação de frequência e magnitude;
-- espectrograma, com explicação de tempo, frequência, energia e resolução;
-- comparação visual sobreposta entre o sinal original e o processado;
-- explicações didáticas dos filtros, da redução espectral, do ganho e da normalização;
-- filtros passa-alta e passa-baixa;
-- redução espectral de ruído, ganho e normalização;
-- comparação entre áudio original e processado.
-
-O reconhecimento automático de fala (ASR), métricas WER/CER e histórico persistente de experimentos ainda são etapas futuras.
-
 ## Requisitos
 
+- Ubuntu 22.04 ou superior (ou distribuição Debian compatível);
 - Python 3.10 ou superior;
-- FFmpeg para formatos como MP3, WebM, M4A e AAC;
-- dependências listadas em `requirements.txt`;\n- memória RAM suficiente para o modelo escolhido. Comece por `tiny` ou `base` em computadores modestos.
+- conexão com a internet durante a instalação das dependências;
+- FFmpeg (o instalador tenta instalá-lo automaticamente).
 
-## Instalação no Ubuntu
+## Instalação rápida (Ubuntu)
+
+Clone o repositório e entre na pasta:
+
+```bash
+git clone https://github.com/GiovaniRodrigo/audio-engineer.git
+cd audio-engineer
+```
+
+Dê permissão de execução aos scripts e instale as dependências:
+
+```bash
+chmod +x instalar.sh iniciar.sh
+./instalar.sh
+```
+
+O instalador cria o ambiente virtual `.venv`, instala/atualiza o pip e instala as bibliotecas de `requirements.txt`. Se necessário, solicitará sua senha para instalar FFmpeg e os pacotes do sistema.
+
+Para abrir o laboratório:
+
+```bash
+./iniciar.sh
+```
+
+O Streamlit exibirá um endereço local, normalmente http://localhost:8501.
+
+## Atualizar uma cópia já clonada
+
+```bash
+git pull
+chmod +x instalar.sh iniciar.sh
+./instalar.sh
+./iniciar.sh
+```
+
+Se as dependências não tiverem mudado, não é necessário executar novamente o instalador após cada `git pull).
+
+## Instalação manual
+
+Caso prefira não usar os scripts:
 
 ```bash
 sudo apt update
 sudo apt install -y ffmpeg python3-venv python3-pip
-
-git clone https://github.com/GiovaniRodrigo/audio-engineer.git
-cd audio-engineer
-
 python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-
-streamlit run audio_engineering_lab.py
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/streamlit run audio_engineering_lab.py
 ```
 
-Abra o endereço local exibido pelo Streamlit (normalmente http://localhost:8501).\n\nNa seção **Reconhecimento automático de fala (ASR)**, escolha um modelo, idioma e beam size. Clique em **Transcrever original e processado**. A primeira execução baixa os pesos do Faster-Whisper. Para calcular WER/CER, informe uma transcrição de referência revisada antes de transcrever.
-
-## Observações científicas
-
-- RMS e pico caracterizam nível/amplitude; não demonstram, isoladamente, melhoria da inteligibilidade.
-- SNR exige referência adequada de sinal/ruído ou um método explícito de estimação.
-- WER/CER exigem uma transcrição de referência revisada. Os resultados são taxas de erro em relação a esse texto, não uma medida absoluta de qualidade.
-- O áudio original é preservado; os ajustes são aplicados a uma cópia mono.
-- A conversão de multicanal para mono pela média pode causar cancelamento de fase em alguns arquivos.
-
-## Estrutura
+## Estrutura principal
 
 ```text
 .
 ├── audio_engineering_lab.py
 ├── requirements.txt
+├── instalar.sh
+├── iniciar.sh
 └── README.md
 ```
+
+## Observações
+
+- A primeira execução pode levar mais tempo devido ao download de modelos de reconhecimento de fala, quando essa funcionalidade for utilizada.
+- Preserve os arquivos de áudio originais ao realizar experimentos de processamento.
+- Nenhum ambiente virtual é versionado no Git; a pasta `.venv` é criada localmente pelo instalador.
 
 ## Licença
 
