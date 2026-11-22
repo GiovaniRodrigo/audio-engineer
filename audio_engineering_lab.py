@@ -183,6 +183,22 @@ with wave_tab:
     fig.update_yaxes(range=[-1.05, 1.05])
     st.plotly_chart(fig, use_container_width=True)
     st.caption("A exibição pode reduzir pontos para manter a interface rápida; o áudio não é alterado.")
+    with st.expander("Aula rápida: como ler a forma de onda", expanded=True):
+        st.markdown(
+            """
+**O que estou vendo?** Cada ponto representa a amplitude do sinal em um instante.
+O eixo horizontal mostra o tempo em segundos; o vertical mostra a amplitude digital,
+normalizada aproximadamente entre −1 e +1.
+
+**Como interpretar?**
+- Trechos próximos de zero podem indicar silêncio ou pausas.
+- Oscilações maiores indicam maior amplitude, mas não necessariamente melhor qualidade.
+- Topos achatados ou valores encostados em ±1 podem indicar clipping (distorção por limite digital).
+
+**Experimente:** reproduza o áudio e localize uma palavra. Observe onde começam e terminam
+as oscilações. Depois aumente o ganho no painel DSP e veja como a forma de onda cresce.
+"""
+        )
 
 with fft_tab:
     st.write("A FFT estima as frequências presentes no trecho selecionado, mas não mostra quando cada frequência ocorreu.")
@@ -240,6 +256,23 @@ with fft_tab:
                     + ", ".join(f"{frequencies[index]:.0f} Hz" for index in strongest)
                     + ". Eles não são automaticamente ruído ou formantes."
                 )
+            with st.expander("Aula rápida: como ler o espectro FFT", expanded=True):
+                st.markdown(
+                    """
+**O que estou vendo?** A FFT decompõe o trecho selecionado em componentes de frequência.
+O eixo horizontal mostra frequência em hertz (Hz); o vertical mostra a magnitude aproximada
+em decibéis.
+
+**Como interpretar?**
+- Picos indicam componentes relativamente fortes naquele trecho.
+- Energia em baixas frequências pode vir da voz, vibração, vento ou manuseio do microfone.
+- Componentes agudos podem conter detalhes importantes de consoantes.
+- Um pico isolado não permite afirmar, sozinho, que existe ruído: é preciso ouvir e comparar.
+
+**Experimente:** selecione um trecho com fala e outro com uma pausa. Compare os espectros.
+Observe também que a resolução em frequência depende do tamanho do trecho analisado.
+"""
+                )
 
 with spec_tab:
     st.write("O espectrograma mostra como a energia por frequência varia ao longo do tempo.")
@@ -285,6 +318,23 @@ with spec_tab:
             f"({1000 * selected_window / sr:.1f} ms), com 75% de sobreposição. "
             "Janelas maiores aumentam a resolução em frequência e reduzem a resolução temporal."
         )
+        with st.expander("Aula rápida: como ler o espectrograma", expanded=True):
+            st.markdown(
+                """
+**O que estou vendo?** É um mapa de energia do áudio ao longo do tempo.
+O eixo horizontal representa o tempo; o vertical, a frequência; as cores representam
+a densidade de energia espectral (dB/Hz).
+
+**Como interpretar?**
+- Faixas horizontais podem representar componentes tonais persistentes.
+- Estruturas que mudam ao longo do tempo acompanham a articulação da fala.
+- Ruídos contínuos podem aparecer durante quase todo o trecho; ruídos impulsivos aparecem em momentos específicos.
+- A janela controla o compromisso entre resolução temporal e resolução em frequência.
+
+**Experimente:** compare uma vogal sustentada com uma consoante fricativa, como /s/.
+Observe como os padrões visuais são diferentes. A cor depende da escala do gráfico.
+"""
+            )
 
 st.divider()
 st.subheader("3. Laboratório DSP")
@@ -314,6 +364,26 @@ with right:
         disabled=not lowpass_enabled,
     )
     st.caption("Atenua agudos. Cortes baixos podem prejudicar fricativas e inteligibilidade.")
+
+with st.expander("Entenda os controles de processamento", expanded=False):
+    st.markdown(
+        """
+- **Passa-alta:** atenua frequências abaixo do corte. Pode reduzir vento e vibrações graves,
+  mas um corte alto remove parte do corpo da voz. O filtro Butterworth de 4ª ordem tem
+  transição gradual, não uma parede abrupta.
+- **Passa-baixa:** atenua frequências acima do corte. Pode reduzir chiado agudo, mas cortes
+  baixos prejudicam consoantes como /s/, /f/ e /ch/.
+- **Redução espectral:** estima e atenua componentes considerados ruído. Pode produzir
+  artefatos metálicos ou voz “aquosa”; aumente gradualmente e sempre faça escuta crítica.
+- **Ganho:** multiplica a amplitude. Um ganho de +6 dB aproximadamente dobra a amplitude;
+  não melhora a relação sinal-ruído.
+- **Normalização:** ajusta o pico para −3 dBFS. Evita aproximar o pico do limite digital,
+  mas não remove ruído nem recupera informação perdida.
+
+**Experimento sugerido:** altere apenas um controle por vez. Ouça o resultado e compare
+o gráfico antes de combinar filtros.
+"""
+    )
 
 col_a, col_b, col_c = st.columns(3)
 with col_a:
@@ -378,6 +448,51 @@ with original_col:
 with processed_col:
     st.markdown("**Processado**")
     st.audio(processed_wav, format="audio/wav")
+
+st.subheader("4. Comparação visual: original × processado")
+st.write(
+    "As duas curvas usam a mesma escala de tempo e amplitude. "
+    "A sobreposição ajuda a perceber mudanças no nível e na forma do sinal."
+)
+original_time, original_values = plot_samples(original, sr)
+processed_time, processed_values = plot_samples(processed, sr)
+comparison_fig = go.Figure()
+comparison_fig.add_trace(
+    go.Scattergl(
+        x=original_time,
+        y=original_values,
+        mode="lines",
+        name="Original",
+        opacity=0.75,
+    )
+)
+comparison_fig.add_trace(
+    go.Scattergl(
+        x=processed_time,
+        y=processed_values,
+        mode="lines",
+        name="Processado",
+        opacity=0.75,
+    )
+)
+comparison_fig.update_layout(
+    xaxis_title="Tempo (s)",
+    yaxis_title="Amplitude relativa",
+    height=380,
+    margin=dict(l=20, r=20, t=20, b=20),
+    legend=dict(orientation="h"),
+)
+st.plotly_chart(comparison_fig, use_container_width=True)
+with st.expander("O que a comparação permite concluir?"):
+    st.markdown(
+        """
+- Se a curva processada ficar maior, houve aumento de amplitude; isso não prova melhoria.
+- Se os picos ficarem menores, pode ter ocorrido atenuação ou redução de ruído, mas a voz também pode ter sido afetada.
+- Se a forma mudar muito, ouça com atenção: filtros e redução espectral podem introduzir artefatos.
+- A avaliação final depende da audição e, para medir transcrição, de comparar o texto reconhecido
+  com uma transcrição de referência usando WER/CER.
+"""
+    )
 
 levels = st.columns(3)
 levels[0].metric("RMS original", f"{rms(original):.5f}")
