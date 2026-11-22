@@ -778,17 +778,33 @@ else:
             with st.container(border=True):
                 st.markdown('<div class="equipment-kicker">Visualização tridimensional interativa</div>', unsafe_allow_html=True)
                 st.markdown(f"#### {selected_equipment}")
+                camera_options = {
+                    "Isométrica": "isometric",
+                    "Frontal": "front",
+                    "Lateral": "side",
+                    "Superior": "top"
+                }
+                camera_label = st.selectbox(
+                    "Ângulo inicial da câmera",
+                    list(camera_options.keys()),
+                    index=0,
+                    key=f"camera_view_{current_step}"
+                )
                 st.plotly_chart(
-                    equipment_animation_figure(selected_equipment),
+                    equipment_animation_figure(selected_equipment, camera_options[camera_label]),
                     use_container_width=True,
                     config={
                         "displayModeBar": True,
                         "displaylogo": False,
+                        "scrollZoom": True,
                         "modeBarButtonsToRemove": ["toImage", "lasso3d", "select3d"]
                     },
                     key=f"equipment_model_{current_step}"
                 )
-                st.caption("Use ▶ Reproduzir e Ⅱ Pausar no gráfico. Arraste para girar e use a roda do mouse para aproximar.")
+                st.caption(
+                    "Escolha um ângulo inicial ou arraste o modelo livremente para girar em qualquer direção. "
+                    "Use a roda do mouse para aproximar. As faixas onduladas representam a propagação do som."
+                )
         progress_labels = "  →  ".join(
             [f"**{name}**" if idx == current_step else name
              for idx, name in enumerate(equipment_names)]
