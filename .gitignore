@@ -1,0 +1,10 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.streamlit/secrets.toml
+*.wav
+*.mp3
+*.webm
+*.m4a
+.DS_Store
