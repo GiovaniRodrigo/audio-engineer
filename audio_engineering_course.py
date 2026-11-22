@@ -788,7 +788,7 @@ else:
         text_col, model_col = st.columns([0.82, 1.55], gap="large")
 
         with text_col:
-            st.markdown('<div class="equipment-panel">', unsafe_allow_html=True)
+            with st.container(border=True):
             st.markdown(f'<div class="equipment-kicker">Etapa {current_step + 1} · cadeia de áudio</div>', unsafe_allow_html=True)
             st.markdown(f"### {selected_equipment}")
             st.markdown(detail["role"])
@@ -801,10 +801,9 @@ else:
             st.write(detail["analogy"])
             with st.expander("Detalhe técnico", expanded=False):
                 st.write(detail["note"])
-            st.markdown('</div>', unsafe_allow_html=True)
 
         with model_col:
-            st.markdown('<div class="equipment-panel">', unsafe_allow_html=True)
+            with st.container(border=True):
             st.markdown('<div class="equipment-kicker">Visualização tridimensional interativa</div>', unsafe_allow_html=True)
             st.markdown(f"#### {selected_equipment}")
             st.plotly_chart(
