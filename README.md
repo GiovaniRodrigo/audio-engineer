@@ -21,7 +21,7 @@ O reconhecimento automático de fala (ASR), métricas WER/CER e histórico persi
 
 - Python 3.10 ou superior;
 - FFmpeg para formatos como MP3, WebM, M4A e AAC;
-- dependências listadas em `requirements.txt`.
+- dependências listadas em `requirements.txt`;\n- memória RAM suficiente para o modelo escolhido. Comece por `tiny` ou `base` em computadores modestos.
 
 ## Instalação no Ubuntu
 
@@ -40,13 +40,13 @@ python -m pip install -r requirements.txt
 streamlit run audio_engineering_lab.py
 ```
 
-Abra o endereço local exibido pelo Streamlit (normalmente http://localhost:8501).
+Abra o endereço local exibido pelo Streamlit (normalmente http://localhost:8501).\n\nNa seção **Reconhecimento automático de fala (ASR)**, escolha um modelo, idioma e beam size. Clique em **Transcrever original e processado**. A primeira execução baixa os pesos do Faster-Whisper. Para calcular WER/CER, informe uma transcrição de referência revisada antes de transcrever.
 
 ## Observações científicas
 
 - RMS e pico caracterizam nível/amplitude; não demonstram, isoladamente, melhoria da inteligibilidade.
 - SNR exige referência adequada de sinal/ruído ou um método explícito de estimação.
-- WER/CER exigem uma transcrição de referência revisada.
+- WER/CER exigem uma transcrição de referência revisada. Os resultados são taxas de erro em relação a esse texto, não uma medida absoluta de qualidade.
 - O áudio original é preservado; os ajustes são aplicados a uma cópia mono.
 - A conversão de multicanal para mono pela média pode causar cancelamento de fase em alguns arquivos.
 
