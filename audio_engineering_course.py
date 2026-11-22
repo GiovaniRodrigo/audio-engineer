@@ -155,6 +155,10 @@ if "audio_data" not in st.session_state:
 if "processed_audio" not in st.session_state:
     st.session_state.processed_audio = None
 
+# Apply navigation requests before the radio widget is created.
+if "navigation_target" in st.session_state:
+    st.session_state.selected_stage = st.session_state.pop("navigation_target")
+
 with st.sidebar:
     st.title("🎧 Sua trilha")
     done = len(st.session_state.completed_stages)
@@ -188,7 +192,7 @@ como o som vira dado digital e avançar até processamento e avaliação automá
 """)
     st.info("Você precisará de um arquivo de áudio com fala. WAV é recomendado para começar; MP3, OGG, FLAC, WebM e M4A também podem funcionar com FFmpeg instalado.")
     if st.button("Começar o curso", type="primary"):
-        st.session_state.selected_stage = STAGES[1]
+        st.session_state.navigation_target = STAGES[1]
         st.rerun()
 
 else:
@@ -385,7 +389,7 @@ else:
             if stage not in st.session_state.completed_stages:
                 st.session_state.completed_stages.append(stage)
             if stage < 6:
-                st.session_state.selected_stage = STAGES[stage + 1]
+                st.session_state.navigation_target = STAGES[stage + 1]
             st.rerun()
     else:
         st.caption("Conclua a atividade e acerte a verificação para liberar a próxima etapa.")
