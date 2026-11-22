@@ -288,140 +288,112 @@ def add_cone(fig, x, y, z, radius, depth, color):
     ))
 
 
-def equipment_animation_figure(name):
-    """Build an interactive Plotly animation illustrating the selected component's physical role."""
+def _wave_surface(phase, offset=0.0, direction=1.0, amplitude=0.22):
+    """A flowing 3D ribbon: a visual metaphor for pressure-wave propagation."""
+    x = np.linspace(-1.75, 1.75, 42)
+    y = np.linspace(-0.34, 0.34, 9) + offset
+    xx, yy = np.meshgrid(x, y)
+    zz = amplitude * np.sin(2.6 * xx - phase * direction)
+    # A subtle second harmonic gives the ribbon a richer, less mechanical profile.
+    zz += 0.045 * np.sin(5.2 * xx - phase * direction * 1.7)
+    return go.Surface(
+        x=xx, y=yy, z=zz, surfacecolor=zz,
+        colorscale=[[0.0, "#075985"], [0.35, "#0ea5e9"], [0.65, "#67e8f9"], [1.0, "#0c4a6e"]],
+        cmin=-0.30, cmax=0.30, showscale=False, opacity=0.78,
+        hoverinfo="skip", lighting=dict(ambient=0.48, diffuse=0.8, specular=0.45, roughness=0.35)
+    )
+
+
+def equipment_animation_figure(name, camera_view="isometric"):
+    """Animate 3D audio-wave ribbons around the selected equipment."""
     fig = equipment_detail_figure(name)
     kind = EQUIPMENT_DETAILS[name]["kind"]
-    frame_count = 32
+    frame_count = 36
     frames = []
+    wave_offsets = [-0.48, 0.0, 0.48]
+    wave_amplitude = 0.20 if kind == "microphone" else 0.24
+    wave_indices = []
+    for offset in wave_offsets:
+        fig.add_trace(_wave_surface(0.0, offset, amplitude=wave_amplitude))
+        wave_indices.append(len(fig.data) - 1)
 
-    if kind == "microphone":
-        # Expanding rings represent sound-pressure waves reaching the microphone capsule.
-        angles = np.linspace(0, 2 * np.pi, 64)
-        trace = go.Scatter3d(
-            x=[], y=[], z=[], mode="lines",
-            line=dict(color="#38bdf8", width=5), name="Ondas sonoras",
-            hoverinfo="skip"
-        )
-        fig.add_trace(trace)
-        trace_index = len(fig.data) - 1
-        for i in range(frame_count):
-            radius = 0.12 + (i % 16) * 0.055
-            x = radius * np.cos(angles)
-            y = radius * np.sin(angles)
-            z = np.full_like(x, 1.35)
-            frames.append(go.Frame(
-                data=[go.Scatter3d(x=x, y=y, z=z)],
-                traces=[trace_index], name=str(i)
-            ))
-        animation_note = "As ondas de pressão se propagam pelo ar e atingem a cápsula do microfone."
-
+    # Additional component-specific motion remains visible alongside the traveling waves.
+    motion_index = None
+    if kind == "adc":
+        fig.add_trace(go.Scatter3d(
+            x=[], y=[], z=[], mode="markers",
+            marker=dict(size=7, color="#fbbf24", line=dict(width=1, color="#fff")),
+            name="Amostras digitais", hoverinfo="skip"
+        ))
+        motion_index = len(fig.data) - 1
     elif kind == "speaker":
-        # The moving front ring represents the cone's in-and-out displacement.
-        angles = np.linspace(0, 2 * np.pi, 64)
-        trace = go.Scatter3d(
+        angles = np.linspace(0, 2*np.pi, 64)
+        fig.add_trace(go.Scatter3d(
             x=[], y=[], z=[], mode="lines",
-            line=dict(color="#38bdf8", width=7), name="Movimento do cone",
-            hoverinfo="skip"
-        )
-        fig.add_trace(trace)
-        trace_index = len(fig.data) - 1
-        for i in range(frame_count):
-            displacement = 0.13 * np.sin(2 * np.pi * i / 16)
-            x = 0.48 * np.cos(angles)
-            z = 0.05 + displacement + 0.48 * np.sin(angles)
-            y = np.full_like(x, -0.82 - displacement)
-            frames.append(go.Frame(
-                data=[go.Scatter3d(x=x, y=y, z=z)],
-                traces=[trace_index], name=str(i)
-            ))
-        animation_note = "O cone vibra para frente e para trás, deslocando o ar e produzindo som."
+            line=dict(color="#fbbf24", width=6), name="Vibração do cone", hoverinfo="skip"
+        ))
+        motion_index = len(fig.data) - 1
 
-    elif kind == "adc":
-        # Dots move across a sampling path and snap to discrete amplitude levels.
-        trace = go.Scatter3d(
-            x=[], y=[], z=[], mode="markers",
-            marker=dict(size=7, color="#fbbf24"), name="Amostras digitais",
-            hoverinfo="skip"
-        )
-        fig.add_trace(trace)
-        trace_index = len(fig.data) - 1
-        for i in range(frame_count):
-            phase = 2 * np.pi * i / frame_count
-            xs = np.linspace(-0.75, 0.75, 9)
-            ys = np.full_like(xs, -0.58)
-            analog = 0.38 * np.sin(2 * np.pi * xs + phase)
-            quantized = np.round(analog * 5) / 5
-            frames.append(go.Frame(
-                data=[go.Scatter3d(x=xs, y=ys, z=0.35 + quantized)],
-                traces=[trace_index], name=str(i)
-            ))
-        animation_note = "O ADC mede o sinal em instantes regulares e representa cada medida por um nível digital."
+    for i in range(frame_count):
+        phase = 2*np.pi*i/frame_count
+        data = [_wave_surface(phase, offset, amplitude=wave_amplitude) for offset in wave_offsets]
+        traces = list(wave_indices)
+        if kind == "adc":
+            xs = np.linspace(-0.75, 0.75, 13)
+            ys = np.full_like(xs, -0.78)
+            analog = 0.34*np.sin(2*np.pi*xs - phase)
+            quantized = np.round(analog*6)/6
+            data.append(go.Scatter3d(x=xs, y=ys, z=0.34+quantized, mode="markers"))
+            traces.append(motion_index)
+        elif kind == "speaker":
+            displacement = 0.09*np.sin(phase*2)
+            x = 0.48*np.cos(angles)
+            z = 0.10 + displacement + 0.48*np.sin(angles)
+            y = np.full_like(x, -0.82-displacement)
+            data.append(go.Scatter3d(x=x, y=y, z=z, mode="lines"))
+            traces.append(motion_index)
+        frames.append(go.Frame(data=data, traces=traces, name=str(i)))
 
-    else:
-        # Moving particles depict signal/energy traveling through the selected circuit.
-        trace = go.Scatter3d(
-            x=[], y=[], z=[], mode="markers",
-            marker=dict(size=7, color="#fbbf24", opacity=0.95),
-            name="Fluxo do sinal", hoverinfo="skip"
-        )
-        fig.add_trace(trace)
-        trace_index = len(fig.data) - 1
-        for i in range(frame_count):
-            phase = (i / frame_count) * 2.0
-            xs = np.array([-0.72, -0.24, 0.24, 0.72])
-            xs = ((xs + phase + 1.44) % 2.0) - 1.0
-            ys = np.full_like(xs, -0.72 if kind in ("preamp", "amplifier") else -0.58)
-            zs = np.full_like(xs, 0.25)
-            frames.append(go.Frame(
-                data=[go.Scatter3d(x=xs, y=ys, z=zs)],
-                traces=[trace_index], name=str(i)
-            ))
-        animation_note = {
-            "preamp": "O sinal analógico de baixa intensidade atravessa o pré-amplificador e sai em nível maior.",
-            "filter": "O sinal atravessa o filtro; componentes fora da faixa desejada são atenuados.",
-            "computer": "As amostras digitais são percorridas e processadas pelo sistema.",
-            "dac": "As amostras digitais seguem para a conversão em um sinal analógico contínuo.",
-            "amplifier": "O amplificador fornece energia para acionar a carga, como um alto-falante."
-        }.get(kind, "O sinal percorre o componente durante o processamento.")
-
+    camera_presets = {
+        "isometric": dict(eye=dict(x=1.65, y=2.05, z=1.35), up=dict(x=0, y=0, z=1), projection=dict(type="perspective")),
+        "front": dict(eye=dict(x=0, y=3.2, z=0.35), up=dict(x=0, y=0, z=1), projection=dict(type="perspective")),
+        "side": dict(eye=dict(x=3.2, y=0, z=0.35), up=dict(x=0, y=0, z=1), projection=dict(type="perspective")),
+        "top": dict(eye=dict(x=0.05, y=0.05, z=3.6), up=dict(x=0, y=1, z=0), projection=dict(type="perspective")),
+    }
+    camera = camera_presets.get(camera_view, camera_presets["isometric"])
     fig.frames = frames
     fig.update_layout(
         scene=dict(
             xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
-            aspectmode="data",
-            camera=dict(eye=dict(x=1.6, y=2.0, z=1.25), projection=dict(type="orthographic"))
+            aspectmode="data", camera=camera, dragmode="orbit"
         ),
-        updatemenus=[dict(
-            type="buttons", showactive=False, x=0.02, y=0.02,
-            xanchor="left", yanchor="bottom",
-            buttons=[
-                dict(
-                    label="▶ Reproduzir",
-                    method="animate",
-                    args=[None, dict(
-                        frame=dict(duration=85, redraw=True),
-                        transition=dict(duration=0),
-                        fromcurrent=True,
-                        mode="immediate"
-                    )]
-                ),
-                dict(
-                    label="Ⅱ Pausar",
-                    method="animate",
-                    args=[[None], dict(
-                        frame=dict(duration=0, redraw=False),
-                        transition=dict(duration=0),
-                        mode="immediate"
-                    )]
-                )
-            ]
-        )],
-        height=590, paper_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=0, b=35)
+        updatemenus=[
+            dict(
+                type="buttons", showactive=False, x=0.01, y=0.02,
+                xanchor="left", yanchor="bottom", direction="right",
+                buttons=[
+                    dict(label="▶ Reproduzir", method="animate",
+                         args=[None, dict(frame=dict(duration=90, redraw=True), transition=dict(duration=0), fromcurrent=True, mode="immediate")]),
+                    dict(label="Ⅱ Pausar", method="animate",
+                         args=[[None], dict(frame=dict(duration=0, redraw=False), transition=dict(duration=0), mode="immediate")])
+                ]
+            ),
+            dict(
+                type="buttons", showactive=False, x=0.99, y=1.02,
+                xanchor="right", yanchor="top", direction="down",
+                buttons=[
+                    dict(label="Isométrica", method="relayout", args=[{"scene.camera": camera_presets["isometric"]}]),
+                    dict(label="Frontal", method="relayout", args=[{"scene.camera": camera_presets["front"]}]),
+                    dict(label="Lateral", method="relayout", args=[{"scene.camera": camera_presets["side"]}]),
+                    dict(label="Superior", method="relayout", args=[{"scene.camera": camera_presets["top"]}])
+                ]
+            )
+        ],
+        height=650, paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=28, b=35),
+        uirevision=f"audio-equipment-{name}"
     )
     return fig
-
 
 def set_equipment_step(step: int):
     """Update the synchronized text/3D guided lesson step."""
