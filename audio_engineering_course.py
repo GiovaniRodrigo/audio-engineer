@@ -288,6 +288,141 @@ def add_cone(fig, x, y, z, radius, depth, color):
     ))
 
 
+def equipment_animation_figure(name):
+    """Build an interactive Plotly animation illustrating the selected component's physical role."""
+    fig = equipment_detail_figure(name)
+    kind = EQUIPMENT_DETAILS[name]["kind"]
+    frame_count = 32
+    frames = []
+
+    if kind == "microphone":
+        # Expanding rings represent sound-pressure waves reaching the microphone capsule.
+        angles = np.linspace(0, 2 * np.pi, 64)
+        trace = go.Scatter3d(
+            x=[], y=[], z=[], mode="lines",
+            line=dict(color="#38bdf8", width=5), name="Ondas sonoras",
+            hoverinfo="skip"
+        )
+        fig.add_trace(trace)
+        trace_index = len(fig.data) - 1
+        for i in range(frame_count):
+            radius = 0.12 + (i % 16) * 0.055
+            x = radius * np.cos(angles)
+            y = radius * np.sin(angles)
+            z = np.full_like(x, 1.35)
+            frames.append(go.Frame(
+                data=[go.Scatter3d(x=x, y=y, z=z)],
+                traces=[trace_index], name=str(i)
+            ))
+        animation_note = "As ondas de pressão se propagam pelo ar e atingem a cápsula do microfone."
+
+    elif kind == "speaker":
+        # The moving front ring represents the cone's in-and-out displacement.
+        angles = np.linspace(0, 2 * np.pi, 64)
+        trace = go.Scatter3d(
+            x=[], y=[], z=[], mode="lines",
+            line=dict(color="#38bdf8", width=7), name="Movimento do cone",
+            hoverinfo="skip"
+        )
+        fig.add_trace(trace)
+        trace_index = len(fig.data) - 1
+        for i in range(frame_count):
+            displacement = 0.13 * np.sin(2 * np.pi * i / 16)
+            x = 0.48 * np.cos(angles)
+            z = 0.05 + displacement + 0.48 * np.sin(angles)
+            y = np.full_like(x, -0.82 - displacement)
+            frames.append(go.Frame(
+                data=[go.Scatter3d(x=x, y=y, z=z)],
+                traces=[trace_index], name=str(i)
+            ))
+        animation_note = "O cone vibra para frente e para trás, deslocando o ar e produzindo som."
+
+    elif kind == "adc":
+        # Dots move across a sampling path and snap to discrete amplitude levels.
+        trace = go.Scatter3d(
+            x=[], y=[], z=[], mode="markers",
+            marker=dict(size=7, color="#fbbf24"), name="Amostras digitais",
+            hoverinfo="skip"
+        )
+        fig.add_trace(trace)
+        trace_index = len(fig.data) - 1
+        for i in range(frame_count):
+            phase = 2 * np.pi * i / frame_count
+            xs = np.linspace(-0.75, 0.75, 9)
+            ys = np.full_like(xs, -0.58)
+            analog = 0.38 * np.sin(2 * np.pi * xs + phase)
+            quantized = np.round(analog * 5) / 5
+            frames.append(go.Frame(
+                data=[go.Scatter3d(x=xs, y=ys, z=0.35 + quantized)],
+                traces=[trace_index], name=str(i)
+            ))
+        animation_note = "O ADC mede o sinal em instantes regulares e representa cada medida por um nível digital."
+
+    else:
+        # Moving particles depict signal/energy traveling through the selected circuit.
+        trace = go.Scatter3d(
+            x=[], y=[], z=[], mode="markers",
+            marker=dict(size=7, color="#fbbf24", opacity=0.95),
+            name="Fluxo do sinal", hoverinfo="skip"
+        )
+        fig.add_trace(trace)
+        trace_index = len(fig.data) - 1
+        for i in range(frame_count):
+            phase = (i / frame_count) * 2.0
+            xs = np.array([-0.72, -0.24, 0.24, 0.72])
+            xs = ((xs + phase + 1.44) % 2.0) - 1.0
+            ys = np.full_like(xs, -0.72 if kind in ("preamp", "amplifier") else -0.58)
+            zs = np.full_like(xs, 0.25)
+            frames.append(go.Frame(
+                data=[go.Scatter3d(x=xs, y=ys, z=zs)],
+                traces=[trace_index], name=str(i)
+            ))
+        animation_note = {
+            "preamp": "O sinal analógico de baixa intensidade atravessa o pré-amplificador e sai em nível maior.",
+            "filter": "O sinal atravessa o filtro; componentes fora da faixa desejada são atenuados.",
+            "computer": "As amostras digitais são percorridas e processadas pelo sistema.",
+            "dac": "As amostras digitais seguem para a conversão em um sinal analógico contínuo.",
+            "amplifier": "O amplificador fornece energia para acionar a carga, como um alto-falante."
+        }.get(kind, "O sinal percorre o componente durante o processamento.")
+
+    fig.frames = frames
+    fig.update_layout(
+        scene=dict(
+            xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
+            aspectmode="data",
+            camera=dict(eye=dict(x=1.6, y=2.0, z=1.25), projection=dict(type="orthographic"))
+        ),
+        updatemenus=[dict(
+            type="buttons", showactive=False, x=0.02, y=0.02,
+            xanchor="left", yanchor="bottom",
+            buttons=[
+                dict(
+                    label="▶ Reproduzir",
+                    method="animate",
+                    args=[None, dict(
+                        frame=dict(duration=85, redraw=True),
+                        transition=dict(duration=0),
+                        fromcurrent=True,
+                        mode="immediate"
+                    )]
+                ),
+                dict(
+                    label="Ⅱ Pausar",
+                    method="animate",
+                    args=[[None], dict(
+                        frame=dict(duration=0, redraw=False),
+                        transition=dict(duration=0),
+                        mode="immediate"
+                    )]
+                )
+            ]
+        )],
+        margin=dict(l=0, r=0, t=5, b=45)
+    )
+    fig.update_layout(title=dict(text=animation_note, x=0.02, y=0.98, font=dict(size=12)))
+    return fig
+
+
 def set_equipment_step(step: int):
     """Update the synchronized text/3D guided lesson step."""
     st.session_state.guided_equipment_step = int(step)
@@ -527,13 +662,13 @@ else:
             st.warning(detail["note"])
         with model_col:
             st.plotly_chart(
-                equipment_detail_figure(selected_equipment),
+                equipment_animation_figure(selected_equipment),
                 use_container_width=True,
                 config={"displayModeBar": True}
             )
             st.caption(
-                f"Modelo 3D: {selected_equipment}. Arraste para girar e use o scroll para aproximar. "
-                "Ao avançar, o modelo acompanha a explicação."
+                f"Modelo 3D animado: use ▶ Reproduzir e Ⅱ Pausar. Arraste para girar e use o scroll para aproximar. "
+                "Ao avançar, o modelo e a explicação mudam juntos."
             )
         progress_labels = "  →  ".join(
             [f"**{name}**" if idx == current_step else name
