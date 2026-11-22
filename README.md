@@ -1,39 +1,55 @@
 # Audio Engineering Lab
 
-Laboratório didático de processamento digital de sinais de áudio, desenvolvido em Python e Streamlit.
+Curso prático e laboratório de processamento digital de sinais de áudio, desenvolvido em Python e Streamlit.
+
+O projeto possui duas experiências:
+
+- **Curso guiado** (`audio_engineering_course.py`): trilha progressiva do básico ao avançado, com explicações, experimentos, atividades e verificações de aprendizagem.
+- **Laboratório completo** (`audio_engineering_lab.py`): ambiente técnico para explorar aquisição, forma de onda, FFT, espectrograma, DSP e reconhecimento automático de fala.
+
+## Trilha de aprendizagem
+
+1. **Comece aqui** — apresentação da metodologia.
+2. **Fundamentos e aquisição** — amostragem, canais, duração e Nyquist.
+3. **Forma de onda** — amplitude, RMS, pico e clipping.
+4. **Frequência e espectrograma** — FFT, energia e resolução tempo-frequência.
+5. **Processamento digital (DSP)** — passa-alta, passa-baixa, redução de ruído, ganho e normalização.
+6. **Reconhecimento de fala (ASR)** — transcrição, WER e CER.
+7. **Projeto final** — experimento documentado e relatório em Markdown.
+
+As etapas são liberadas progressivamente após a atividade e a verificação de aprendizagem. O áudio original é preservado.
 
 ## Requisitos
 
 - Ubuntu 22.04 ou superior (ou distribuição Debian compatível);
 - Python 3.10 ou superior;
-- conexão com a internet durante a instalação das dependências;
-- FFmpeg (o instalador tenta instalá-lo automaticamente).
+- conexão com a internet durante a instalação;
+- FFmpeg para formatos como MP3, WebM, M4A e AAC.
 
 ## Instalação rápida (Ubuntu)
-
-Clone o repositório e entre na pasta:
 
 ```bash
 git clone https://github.com/GiovaniRodrigo/audio-engineer.git
 cd audio-engineer
-```
-
-Dê permissão de execução aos scripts e instale as dependências:
-
-```bash
 chmod +x instalar.sh iniciar.sh
 ./instalar.sh
 ```
 
-O instalador cria o ambiente virtual `.venv`, instala/atualiza o pip e instala as bibliotecas de `requirements.txt`. Se necessário, solicitará sua senha para instalar FFmpeg e os pacotes do sistema.
-
-Para abrir o laboratório:
+Para iniciar o curso guiado:
 
 ```bash
 ./iniciar.sh
 ```
 
 O Streamlit exibirá um endereço local, normalmente http://localhost:8501.
+
+## Abrir o laboratório técnico completo
+
+Depois de executar a instalação, use:
+
+```bash
+.venv/bin/streamlit run audio_engineering_lab.py
+```
 
 ## Atualizar uma cópia já clonada
 
@@ -44,11 +60,9 @@ chmod +x instalar.sh iniciar.sh
 ./iniciar.sh
 ```
 
-Se as dependências não tiverem mudado, não é necessário executar novamente o instalador após cada `git pull`.
+Se as dependências não tiverem mudado, não é necessário executar novamente o instalador após cada atualização.
 
 ## Instalação manual
-
-Caso prefira não usar os scripts:
 
 ```bash
 sudo apt update
@@ -56,13 +70,14 @@ sudo apt install -y ffmpeg python3-venv python3-pip
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/streamlit run audio_engineering_lab.py
+.venv/bin/streamlit run audio_engineering_course.py
 ```
 
 ## Estrutura principal
 
 ```text
 .
+├── audio_engineering_course.py
 ├── audio_engineering_lab.py
 ├── requirements.txt
 ├── instalar.sh
@@ -70,11 +85,13 @@ python3 -m venv .venv
 └── README.md
 ```
 
-## Observações
+## Observações científicas
 
-- A primeira execução pode levar mais tempo devido ao download de modelos de reconhecimento de fala, quando essa funcionalidade for utilizada.
-- Preserve os arquivos de áudio originais ao realizar experimentos de processamento.
-- Nenhum ambiente virtual é versionado no Git; a pasta `.venv` é criada localmente pelo instalador.
+- RMS e pico descrevem amplitude; não demonstram, isoladamente, melhoria da inteligibilidade.
+- SNR exige uma referência adequada de sinal/ruído ou um método explícito de estimação.
+- WER/CER exigem uma transcrição de referência revisada.
+- A conversão multicanal para mono pela média pode causar cancelamento de fase.
+- A primeira execução de ASR pode baixar os pesos do modelo e levar mais tempo, especialmente em CPU.
 
 ## Licença
 
