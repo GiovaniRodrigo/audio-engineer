@@ -44,7 +44,7 @@ chmod +x instalar.sh iniciar.sh
 ./iniciar.sh
 ```
 
-Se as dependências não tiverem mudado, não é necessário executar novamente o instalador após cada `git pull).
+Se as dependências não tiverem mudado, não é necessário executar novamente o instalador após cada `git pull`.
 
 ## Instalação manual
 
