@@ -23,7 +23,7 @@ Grave uma ou mais frases de referência na interface e execute a calibração. P
 
 O perfil atual testa uma pequena grade de configurações: áudio original, passa-alta em 70/100 Hz e redução leve/moderada de ruído em combinações conservadoras. O áudio original nunca é sobrescrito. Se nenhum candidato melhorar o WER do baseline, o sistema recomenda manter o original.
 
-## Trilha de aprendizagem
+## Documentação para desenvolvimento\n\n- [AGENTS.md](AGENTS.md): instruções, arquitetura, regras de segurança, testes e critérios de conclusão para agentes de desenvolvimento.\n- [Especificação do Smart Audio Calibration](docs/SMART_AUDIO_CALIBRATION.md): pipeline, perfis DSP, métricas, mecanismos ASR e protocolo de validação.\n\n## Trilha de aprendizagem
 
 1. **Comece aqui** — apresentação da metodologia.
 2. **Fundamentos e aquisição** — amostragem, canais, duração e Nyquist.
