@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font:14px system-ui,sans-serif;margin:0;color:var(--text-color,#ddd);background:transparent}
+button{border:1px solid #777;border-radius:8px;padding:9px 14px;background:transparent;color:inherit;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}.status{margin-left:10px}.result{margin-top:10px;white-space:pre-wrap}
+</style></head>
+<body>
+<button id="start">🎙️ Iniciar reconhecimento no navegador</button>
+<span class="status" id="status">Pronto</span><div class="result" id="result"></div>
+<script>
+const start=document.getElementById("start"),status=document.getElementById("status"),result=document.getElementById("result");
+let recognition=null;
+function send(value){window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setComponentValue",value},"*");}
+window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:componentReady",apiVersion:1},"*");
+window.addEventListener("message",e=>{if(e.data && e.data.type==="streamlit:render"){const h=e.data.args?.height;if(h)window.parent.postMessage({isStreamlitMessage:true,type:"streamlit:setFrameHeight",height:110},"*");}});
+start.onclick=()=>{
+ const API=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!API){status.textContent="Não suportado neste navegador.";send({error:"Web Speech API não suportada. Use Chrome ou Edge atualizado."});return;}
+ recognition=new API();recognition.lang="pt-BR";recognition.continuous=false;recognition.interimResults=true;
+ start.disabled=true;status.textContent="Ouvindo… fale a frase de teste.";
+ recognition.onresult=e=>{let final="",partial="";for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)final+=t;else partial+=t;}result.textContent=final||partial;if(final)send({transcript:final,engine:"Web Speech API",locale:"pt-BR"});};
+ recognition.onerror=e=>{status.textContent="Erro: "+e.error;send({error:e.error});start.disabled=false;};
+ recognition.onend=()=>{start.disabled=false;if(status.textContent==="Ouvindo… fale a frase de teste.")status.textContent="Reconhecimento encerrado.";};
+ try{recognition.start();}catch(err){start.disabled=false;status.textContent=err.message;send({error:err.message});}
+};
+</script></body></html>
